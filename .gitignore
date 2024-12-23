@@ -125,3 +125,5 @@ include/etcdclient/etcdclient.h
 build
 
 curvefs
+dingo-eureka/*
+dist/
