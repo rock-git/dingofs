@@ -33,7 +33,7 @@ Status MDSServiceImpl::GenFsId(int64_t& fs_id) {
   return ret ? Status::OK() : Status(pb::error::EGEN_FSID, "generate fs id fail");
 }
 
-static Status ValidateCreateFsRequest(const pb::mds::CreateFsRequest* request) {
+static Status ValidateCreateFsRequest(const pb::mdsv2::CreateFsRequest* request) {
   if (request->fs_name().empty()) {
     return Status(pb::error::EILLEGAL_PARAMTETER, "fs name is empty");
   }
@@ -41,8 +41,8 @@ static Status ValidateCreateFsRequest(const pb::mds::CreateFsRequest* request) {
   return Status::OK();
 }
 
-void MDSServiceImpl::DoCreateFs(google::protobuf::RpcController* controller, const pb::mds::CreateFsRequest* request,
-                                pb::mds::CreateFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DoCreateFs(google::protobuf::RpcController* controller, const pb::mdsv2::CreateFsRequest* request,
+                                pb::mdsv2::CreateFsResponse* response, google::protobuf::Closure* done) {
   brpc::Controller* cntl = (brpc::Controller*)controller;
   brpc::ClosureGuard done_guard(done);
 
@@ -54,11 +54,11 @@ void MDSServiceImpl::DoCreateFs(google::protobuf::RpcController* controller, con
   }
 
   // set fs info
-  pb::mds::FsInfo fs_info;
+  pb::mdsv2::FsInfo fs_info;
   fs_info.set_fs_id(fs_id);
   fs_info.set_fs_name(request->fs_name());
   fs_info.set_fs_type(request->fs_type());
-  fs_info.set_status(::dingofs::pb::mds::FsStatus::NEW);
+  fs_info.set_status(::dingofs::pb::mdsv2::FsStatus::NEW);
   fs_info.set_block_size(request->block_size());
   fs_info.set_enable_sum_in_dir(request->enable_sum_in_dir());
   fs_info.set_owner(request->owner());
@@ -73,8 +73,8 @@ void MDSServiceImpl::DoCreateFs(google::protobuf::RpcController* controller, con
 }
 
 // fs interface
-void MDSServiceImpl::CreateFs(google::protobuf::RpcController* controller, const pb::mds::CreateFsRequest* request,
-                              pb::mds::CreateFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::CreateFs(google::protobuf::RpcController* controller, const pb::mdsv2::CreateFsRequest* request,
+                              pb::mdsv2::CreateFsResponse* response, google::protobuf::Closure* done) {
   auto* svr_done = new ServiceClosure(__func__, done, request, response);
 
   auto status = ValidateCreateFsRequest(request);
@@ -95,8 +95,8 @@ void MDSServiceImpl::CreateFs(google::protobuf::RpcController* controller, const
   }
 }
 
-void MDSServiceImpl::DoMountFs(google::protobuf::RpcController* controller, const pb::mds::MountFsRequest* request,
-                               pb::mds::MountFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DoMountFs(google::protobuf::RpcController* controller, const pb::mdsv2::MountFsRequest* request,
+                               pb::mdsv2::MountFsResponse* response, google::protobuf::Closure* done) {
   brpc::Controller* cntl = (brpc::Controller*)controller;
   brpc::ClosureGuard done_guard(done);
 
@@ -106,8 +106,8 @@ void MDSServiceImpl::DoMountFs(google::protobuf::RpcController* controller, cons
   }
 }
 
-void MDSServiceImpl::MountFs(google::protobuf::RpcController* controller, const pb::mds::MountFsRequest* request,
-                             pb::mds::MountFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::MountFs(google::protobuf::RpcController* controller, const pb::mdsv2::MountFsRequest* request,
+                             pb::mdsv2::MountFsResponse* response, google::protobuf::Closure* done) {
   auto* svr_done = new ServiceClosure(__func__, done, request, response);
 
   // Run in queue.
@@ -122,8 +122,8 @@ void MDSServiceImpl::MountFs(google::protobuf::RpcController* controller, const 
   }
 }
 
-void MDSServiceImpl::DoUmountFs(google::protobuf::RpcController* controller, const pb::mds::UmountFsRequest* request,
-                                pb::mds::UmountFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DoUmountFs(google::protobuf::RpcController* controller, const pb::mdsv2::UmountFsRequest* request,
+                                pb::mdsv2::UmountFsResponse* response, google::protobuf::Closure* done) {
   brpc::Controller* cntl = (brpc::Controller*)controller;
   brpc::ClosureGuard done_guard(done);
 
@@ -133,8 +133,8 @@ void MDSServiceImpl::DoUmountFs(google::protobuf::RpcController* controller, con
   }
 }
 
-void MDSServiceImpl::UmountFs(google::protobuf::RpcController* controller, const pb::mds::UmountFsRequest* request,
-                              pb::mds::UmountFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::UmountFs(google::protobuf::RpcController* controller, const pb::mdsv2::UmountFsRequest* request,
+                              pb::mdsv2::UmountFsResponse* response, google::protobuf::Closure* done) {
   auto* svr_done = new ServiceClosure(__func__, done, request, response);
 
   // Run in queue.
@@ -149,8 +149,8 @@ void MDSServiceImpl::UmountFs(google::protobuf::RpcController* controller, const
   }
 }
 
-void MDSServiceImpl::DoDeleteFs(google::protobuf::RpcController* controller, const pb::mds::DeleteFsRequest* request,
-                                pb::mds::DeleteFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DoDeleteFs(google::protobuf::RpcController* controller, const pb::mdsv2::DeleteFsRequest* request,
+                                pb::mdsv2::DeleteFsResponse* response, google::protobuf::Closure* done) {
   brpc::Controller* cntl = (brpc::Controller*)controller;
   brpc::ClosureGuard done_guard(done);
 
@@ -160,8 +160,8 @@ void MDSServiceImpl::DoDeleteFs(google::protobuf::RpcController* controller, con
   }
 }
 
-void MDSServiceImpl::DeleteFs(google::protobuf::RpcController* controller, const pb::mds::DeleteFsRequest* request,
-                              pb::mds::DeleteFsResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DeleteFs(google::protobuf::RpcController* controller, const pb::mdsv2::DeleteFsRequest* request,
+                              pb::mdsv2::DeleteFsResponse* response, google::protobuf::Closure* done) {
   auto* svr_done = new ServiceClosure(__func__, done, request, response);
 
   // Run in queue.
@@ -176,14 +176,15 @@ void MDSServiceImpl::DeleteFs(google::protobuf::RpcController* controller, const
   }
 }
 
-void MDSServiceImpl::DoGetFsInfo(google::protobuf::RpcController* controller, const pb::mds::GetFsInfoRequest* request,
-                                 pb::mds::GetFsInfoResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::DoGetFsInfo(google::protobuf::RpcController* controller,
+                                 const pb::mdsv2::GetFsInfoRequest* request, pb::mdsv2::GetFsInfoResponse* response,
+                                 google::protobuf::Closure* done) {
   brpc::Controller* cntl = (brpc::Controller*)controller;
   brpc::ClosureGuard done_guard(done);
 }
 
-void MDSServiceImpl::GetFsInfo(google::protobuf::RpcController* controller, const pb::mds::GetFsInfoRequest* request,
-                               pb::mds::GetFsInfoResponse* response, google::protobuf::Closure* done) {
+void MDSServiceImpl::GetFsInfo(google::protobuf::RpcController* controller, const pb::mdsv2::GetFsInfoRequest* request,
+                               pb::mdsv2::GetFsInfoResponse* response, google::protobuf::Closure* done) {
   auto* svr_done = new ServiceClosure(__func__, done, request, response);
 
   // Run in queue.
@@ -200,87 +201,115 @@ void MDSServiceImpl::GetFsInfo(google::protobuf::RpcController* controller, cons
 
 // dentry interface
 void MDSServiceImpl::CreateDentry(google::protobuf::RpcController* controller,
-                                  const pb::mds::CreateDentryRequest* request, pb::mds::CreateDentryResponse* response,
-                                  google::protobuf::Closure* done) {}
+                                  const pb::mdsv2::CreateDentryRequest* request,
+                                  pb::mdsv2::CreateDentryResponse* response, google::protobuf::Closure* done) {}
 void MDSServiceImpl::DeleteDentry(google::protobuf::RpcController* controller,
-                                  const pb::mds::DeleteDentryRequest* request, pb::mds::DeleteDentryResponse* response,
-                                  google::protobuf::Closure* done) {}
-void MDSServiceImpl::GetDentry(google::protobuf::RpcController* controller, const pb::mds::GetDentryRequest* request,
-                               pb::mds::GetDentryResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::ListDentry(google::protobuf::RpcController* controller, const pb::mds::ListDentryRequest* request,
-                                pb::mds::ListDentryResponse* response, google::protobuf::Closure* done) {}
+                                  const pb::mdsv2::DeleteDentryRequest* request,
+                                  pb::mdsv2::DeleteDentryResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::GetDentry(google::protobuf::RpcController* controller, const pb::mdsv2::GetDentryRequest* request,
+                               pb::mdsv2::GetDentryResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::ListDentry(google::protobuf::RpcController* controller,
+                                const pb::mdsv2::ListDentryRequest* request, pb::mdsv2::ListDentryResponse* response,
+                                google::protobuf::Closure* done) {}
 
 // inode interface
 void MDSServiceImpl::CreateInode(google::protobuf::RpcController* controller,
-                                 const pb::mds::CreateInodeRequest* request, pb::mds::CreateInodeResponse* response,
+                                 const pb::mdsv2::CreateInodeRequest* request, pb::mdsv2::CreateInodeResponse* response,
                                  google::protobuf::Closure* done) {}
 
 void MDSServiceImpl::CreateRootInode(google::protobuf::RpcController* controller,
-                                     const pb::mds::CreateRootInodeRequest* request,
-                                     pb::mds::CreateRootInodeResponse* response, google::protobuf::Closure* done) {}
+                                     const pb::mdsv2::CreateRootInodeRequest* request,
+                                     pb::mdsv2::CreateRootInodeResponse* response, google::protobuf::Closure* done) {}
 void MDSServiceImpl::DeleteInode(google::protobuf::RpcController* controller,
-                                 const pb::mds::DeleteInodeRequest* request, pb::mds::DeleteInodeResponse* response,
+                                 const pb::mdsv2::DeleteInodeRequest* request, pb::mdsv2::DeleteInodeResponse* response,
                                  google::protobuf::Closure* done) {}
 void MDSServiceImpl::UpdateInode(google::protobuf::RpcController* controller,
-                                 const pb::mds::UpdateInodeRequest* request, pb::mds::UpdateInodeResponse* response,
+                                 const pb::mdsv2::UpdateInodeRequest* request, pb::mdsv2::UpdateInodeResponse* response,
                                  google::protobuf::Closure* done) {}
 void MDSServiceImpl::UpdateS3Chunk(google::protobuf::RpcController* controller,
-                                   const pb::mds::UpdateS3ChunkRequest* request,
-                                   pb::mds::UpdateS3ChunkResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::GetInode(google::protobuf::RpcController* controller, const pb::mds::GetInodeRequest* request,
-                              pb::mds::GetInodeResponse* response, google::protobuf::Closure* done) {}
+                                   const pb::mdsv2::UpdateS3ChunkRequest* request,
+                                   pb::mdsv2::UpdateS3ChunkResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::GetInode(google::protobuf::RpcController* controller, const pb::mdsv2::GetInodeRequest* request,
+                              pb::mdsv2::GetInodeResponse* response, google::protobuf::Closure* done) {}
 void MDSServiceImpl::BatchGetXAttr(google::protobuf::RpcController* controller,
-                                   const pb::mds::BatchGetXAttrRequest* request,
-                                   pb::mds::BatchGetXAttrResponse* response, google::protobuf::Closure* done) {}
+                                   const pb::mdsv2::BatchGetXAttrRequest* request,
+                                   pb::mdsv2::BatchGetXAttrResponse* response, google::protobuf::Closure* done) {}
 
 // high level interface
-void MDSServiceImpl::MkNod(google::protobuf::RpcController* controller, const pb::mds::MkNodRequest* request,
-                           pb::mds::MkNodResponse* response, google::protobuf::Closure* done) {}
 
-void MDSServiceImpl::MkDir(google::protobuf::RpcController* controller, const pb::mds::MkDirRequest* request,
-                           pb::mds::MkDirResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::RmDir(google::protobuf::RpcController* controller, const pb::mds::RmDirRequest* request,
-                           pb::mds::RmDirResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::DoMkNod(google::protobuf::RpcController* controller, const pb::mdsv2::MkNodRequest* request,
+                             pb::mdsv2::MkNodResponse* response, google::protobuf::Closure* done) {
+  brpc::Controller* cntl = (brpc::Controller*)controller;
+  brpc::ClosureGuard done_guard(done);
 
-void MDSServiceImpl::Link(google::protobuf::RpcController* controller, const pb::mds::LinkRequest* request,
-                          pb::mds::LinkResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::UnLink(google::protobuf::RpcController* controller, const pb::mds::UnLinkRequest* request,
-                            pb::mds::UnLinkResponse* response, google::protobuf::Closure* done) {}
+  auto status = file_system_->UmountFs(request->fs_name(), request->mount_point());
+  if (BAIDU_UNLIKELY(!status.ok())) {
+    ServiceHelper::SetError(response->mutable_error(), status.error_code(), status.error_str());
+  }
+}
 
-void MDSServiceImpl::Symlink(google::protobuf::RpcController* controller, const pb::mds::SymlinkRequest* request,
-                             pb::mds::SymlinkResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::ReadLink(google::protobuf::RpcController* controller, const pb::mds::ReadLinkRequest* request,
-                              pb::mds::ReadLinkResponse* response, google::protobuf::Closure* done) {}
-void MDSServiceImpl::Rename(google::protobuf::RpcController* controller, const pb::mds::RenameRequest* request,
-                            pb::mds::RenameResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::MkNod(google::protobuf::RpcController* controller, const pb::mdsv2::MkNodRequest* request,
+                           pb::mdsv2::MkNodResponse* response, google::protobuf::Closure* done) {
+  auto* svr_done = new ServiceClosure(__func__, done, request, response);
+
+  // Run in queue.
+  auto task = std::make_shared<ServiceTask>(
+      [this, controller, request, response, svr_done]() { DoMkNod(controller, request, response, svr_done); });
+
+  bool ret = write_worker_set_->Execute(task);
+  if (BAIDU_UNLIKELY(!ret)) {
+    brpc::ClosureGuard done_guard(svr_done);
+    ServiceHelper::SetError(response->mutable_error(), pb::error::EREQUEST_FULL,
+                            "WorkerSet queue is full, please wait and retry");
+  }
+}
+
+void MDSServiceImpl::MkDir(google::protobuf::RpcController* controller, const pb::mdsv2::MkDirRequest* request,
+                           pb::mdsv2::MkDirResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::RmDir(google::protobuf::RpcController* controller, const pb::mdsv2::RmDirRequest* request,
+                           pb::mdsv2::RmDirResponse* response, google::protobuf::Closure* done) {}
+
+void MDSServiceImpl::Link(google::protobuf::RpcController* controller, const pb::mdsv2::LinkRequest* request,
+                          pb::mdsv2::LinkResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::UnLink(google::protobuf::RpcController* controller, const pb::mdsv2::UnLinkRequest* request,
+                            pb::mdsv2::UnLinkResponse* response, google::protobuf::Closure* done) {}
+
+void MDSServiceImpl::Symlink(google::protobuf::RpcController* controller, const pb::mdsv2::SymlinkRequest* request,
+                             pb::mdsv2::SymlinkResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::ReadLink(google::protobuf::RpcController* controller, const pb::mdsv2::ReadLinkRequest* request,
+                              pb::mdsv2::ReadLinkResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::Rename(google::protobuf::RpcController* controller, const pb::mdsv2::RenameRequest* request,
+                            pb::mdsv2::RenameResponse* response, google::protobuf::Closure* done) {}
 
 // quota interface
-void MDSServiceImpl::SetFsQuota(google::protobuf::RpcController* controller, const pb::mds::SetFsQuotaRequest* request,
-                                pb::mds::SetFsQuotaResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::SetFsQuota(google::protobuf::RpcController* controller,
+                                const pb::mdsv2::SetFsQuotaRequest* request, pb::mdsv2::SetFsQuotaResponse* response,
+                                google::protobuf::Closure* done) {}
 
-void MDSServiceImpl::GetFsQuota(google::protobuf::RpcController* controller, const pb::mds::GetFsQuotaRequest* request,
-                                pb::mds::GetFsQuotaResponse* response, google::protobuf::Closure* done) {}
+void MDSServiceImpl::GetFsQuota(google::protobuf::RpcController* controller,
+                                const pb::mdsv2::GetFsQuotaRequest* request, pb::mdsv2::GetFsQuotaResponse* response,
+                                google::protobuf::Closure* done) {}
 void MDSServiceImpl::FlushFsUsage(google::protobuf::RpcController* controller,
-                                  const pb::mds::FlushFsUsageRequest* request, pb::mds::FlushFsUsageResponse* response,
-                                  google::protobuf::Closure* done) {}
+                                  const pb::mdsv2::FlushFsUsageRequest* request,
+                                  pb::mdsv2::FlushFsUsageResponse* response, google::protobuf::Closure* done) {}
 
 void MDSServiceImpl::SetDirQuota(google::protobuf::RpcController* controller,
-                                 const pb::mds::SetDirQuotaRequest* request, pb::mds::SetDirQuotaResponse* response,
+                                 const pb::mdsv2::SetDirQuotaRequest* request, pb::mdsv2::SetDirQuotaResponse* response,
                                  google::protobuf::Closure* done) {}
 
 void MDSServiceImpl::GetDirQuota(google::protobuf::RpcController* controller,
-                                 const pb::mds::GetDirQuotaRequest* request, pb::mds::GetDirQuotaResponse* response,
+                                 const pb::mdsv2::GetDirQuotaRequest* request, pb::mdsv2::GetDirQuotaResponse* response,
                                  google::protobuf::Closure* done) {}
 void MDSServiceImpl::DeleteDirQuota(google::protobuf::RpcController* controller,
-                                    const pb::mds::DeleteDirQuotaRequest* request,
-                                    pb::mds::DeleteDirQuotaResponse* response, google::protobuf::Closure* done) {}
+                                    const pb::mdsv2::DeleteDirQuotaRequest* request,
+                                    pb::mdsv2::DeleteDirQuotaResponse* response, google::protobuf::Closure* done) {}
 
 void MDSServiceImpl::LoadDirQuotas(google::protobuf::RpcController* controller,
-                                   const pb::mds::LoadDirQuotasRequest* request,
-                                   pb::mds::LoadDirQuotasResponse* response, google::protobuf::Closure* done) {}
+                                   const pb::mdsv2::LoadDirQuotasRequest* request,
+                                   pb::mdsv2::LoadDirQuotasResponse* response, google::protobuf::Closure* done) {}
 void MDSServiceImpl::FlushDirUsages(google::protobuf::RpcController* controller,
-                                    const pb::mds::FlushDirUsagesRequest* request,
-                                    pb::mds::FlushDirUsagesResponse* response, google::protobuf::Closure* done) {}
+                                    const pb::mdsv2::FlushDirUsagesRequest* request,
+                                    pb::mdsv2::FlushDirUsagesResponse* response, google::protobuf::Closure* done) {}
 
 }  // namespace mdsv2
 

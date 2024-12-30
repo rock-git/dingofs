@@ -26,6 +26,7 @@
 #include "dingofs/src/mdsv2/common/helper.h"
 #include "dingofs/src/mdsv2/common/logging.h"
 #include "dingofs/src/mdsv2/common/version.h"
+#include "dingofs/src/mdsv2/coordinator/dingo_coordinator_client.h"
 #include "dingofs/src/mdsv2/service/heartbeat.h"
 #include "dingofs/src/mdsv2/service/mds_service.h"
 #include "dingofs/src/mdsv2/storage/dingodb_storage.h"
@@ -184,7 +185,10 @@ bool Server::InitCoordinatorClient(const std::string& coor_url) {
     return false;
   }
 
-  return coordinator_client_.Init(coor_addrs);
+  coordinator_client_ = DingoCoordinatorClient::New();
+  CHECK(coordinator_client_ != nullptr) << "new DingoCoordinatorClient fail.";
+
+  return coordinator_client_->Init(coor_addrs);
 }
 
 bool Server::InitFsIdGenerator() {

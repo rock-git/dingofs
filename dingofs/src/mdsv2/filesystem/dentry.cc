@@ -12,16 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dingofs/src/mdsv2/coordinator/coordinator_client.h"
+#include "dingofs/src/mdsv2/filesystem/dentry.h"
 
-#include <string>
-
-#include "dingofs/proto/error.pb.h"
-#include "dingofs/src/mdsv2/common/logging.h"
-#include "fmt/core.h"
+#include "bthread/mutex.h"
 
 namespace dingofs {
+namespace mdsv2 {
 
-namespace mdsv2 {}  // namespace mdsv2
+Dentry::Dentry(uint32_t fs_id, const std::string& name) : fs_id_(fs_id), name_(name) {
+  bthread_mutex_init(&mutex_, nullptr);
+}
 
+Dentry::~Dentry() { bthread_mutex_destroy(&mutex_); }
+
+std::string Dentry::SerializeAsString() {
+  pb::mdsv2::Dentry dentry;
+  dentry.set_fs_id(fs_id_);
+  dentry.set_inode_id(ino_);
+  dentry.set_parent_inode_id(parent_ino_);
+  dentry.set_name(name_);
+  dentry.set_type(type_);
+  dentry.set_flag(flag_);
+
+  return dentry.SerializeAsString();
+}
+
+}  // namespace mdsv2
 }  // namespace dingofs

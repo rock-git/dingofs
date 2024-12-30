@@ -58,6 +58,7 @@ class KVStorage {
 
   virtual Status Delete(const std::string& key) = 0;
 };
+using KVStoragePtr = std::shared_ptr<KVStorage>;
 
 }  // namespace mdsv2
 }  // namespace dingofs

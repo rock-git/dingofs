@@ -117,10 +117,6 @@ DingodbStorage::TxnPtr DingodbStorage::NewTxn() {
 }
 
 Status DingodbStorage::Put(WriteOption option, const std::string& key, const std::string& value) {
-  // for test
-  DINGO_LOG(INFO) << fmt::format("Put key({}), value({}).", Helper::StringToHex(key), Helper::StringToHex(value));
-  return Status::OK();
-
   auto txn = NewTxn();
   if (txn == nullptr) {
     return Status(pb::error::EBACKEND_STORE, "new transaction fail");
@@ -190,10 +186,6 @@ Status DingodbStorage::Put(WriteOption option, const std::vector<KeyValue>& kvs)
 }
 
 Status DingodbStorage::Get(const std::string& key, std::string& value) {
-  // for test
-  DINGO_LOG(INFO) << fmt::format("Get key({}).", Helper::StringToHex(key));
-  return Status::OK();
-
   auto txn = NewTxn();
   if (txn == nullptr) {
     return Status(pb::error::EBACKEND_STORE, "new transaction fail");

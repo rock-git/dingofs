@@ -21,8 +21,8 @@
 #include "dingofs/src/mdsv2/common/crontab.h"
 #include "dingofs/src/mdsv2/coordinator/coordinator_client.h"
 #include "dingofs/src/mdsv2/filesystem/filesystem.h"
+#include "dingofs/src/mdsv2/mds/mds_meta.h"
 #include "dingofs/src/mdsv2/service/heartbeat.h"
-#include "dingofs/src/mdsv2/service/mds_meta.h"
 #include "dingofs/src/mdsv2/storage/storage.h"
 #include "dingofs/src/utils/configuration.h"
 
@@ -59,7 +59,7 @@ class Server {
   std::string GetListenAddr();
   MDSMeta& GetMDSMeta();
   Heartbeat& GetHeartbeat() { return heartbeat_; }
-  CoordinatorClient& GetCoordinatorClient() { return coordinator_client_; }
+  CoordinatorClientPtr GetCoordinatorClient() { return coordinator_client_; }
 
   void Run();
 
@@ -80,7 +80,7 @@ class Server {
   std::vector<CrontabConfig> crontab_configs_;
 
   // coordinator client
-  CoordinatorClient coordinator_client_;
+  CoordinatorClientPtr coordinator_client_;
 
   // fs id generator
   IdGeneratorPtr fs_id_generator_;

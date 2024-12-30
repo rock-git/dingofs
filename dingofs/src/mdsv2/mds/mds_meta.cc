@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dingofs/src/mdsv2/service/mds_meta.h"
+#include "dingofs/src/mdsv2/mds/mds_meta.h"
 
 #include "fmt/core.h"
 
 namespace dingofs {
-
 namespace mdsv2 {
 
 std::string MDSMeta::ToString() const {
@@ -26,5 +25,4 @@ std::string MDSMeta::ToString() const {
 }
 
 }  // namespace mdsv2
-
 }  // namespace dingofs
