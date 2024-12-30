@@ -129,6 +129,9 @@ message("Using uring ${uring_VERSION}")
 find_package(jsoncpp REQUIRED)
 message("Using jsoncpp ${jsoncpp_VERSION}")
 
+find_package(leveldb REQUIRED)
+message("Using leveldb ${leveldb_VERSION}")
+
 find_package(brpc REQUIRED)
 find_package(braft REQUIRED)
 find_package(RocksDB REQUIRED)
