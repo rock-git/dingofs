@@ -22,6 +22,7 @@ file(GLOB FUSE_CLIENT_LIB_SRCS
     "*.cpp"
     "s3/*.cpp"
     "filesystem/*.cpp"
+    "filesystemv2/*.cpp"
     "warmup/*.cpp"
     "service/*.cpp"
 )
@@ -42,6 +43,8 @@ target_link_libraries(fuse_client_lib
     dingofs_utils
     aws_s3_adapter
     client_common
+    mdsv2_common
+    mdsv2_coordinator
     dingofs_threading
     gflags
     glog
