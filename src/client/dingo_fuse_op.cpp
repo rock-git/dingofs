@@ -71,6 +71,8 @@ using dingofs::pb::mds::FsInfo;
 using dingofs::pb::mds::FSStatusCode;
 using dingofs::pb::mds::FSStatusCode_Name;
 
+#ifdef DINGOFS_OLD_VERSION
+
 static FuseClient* g_client_instance = nullptr;
 static FuseClientOption* g_fuse_client_option = nullptr;
 static ClientOpMetric* g_clientOpMetric = nullptr;
@@ -372,6 +374,8 @@ void FuseOpDestroy(void* userdata) {
 }
 
 void FuseOpLookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
+  LOG(INFO) << fmt::format("Lookup parent({}), name({}).", parent, name);
+
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -390,6 +394,8 @@ void FuseOpLookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
 }
 
 void FuseOpGetAttr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("GetAttr ino({}).", ino);
+
   DINGOFS_ERROR rc;
   AttrOut attr_out;
   auto* client = Client();
@@ -406,8 +412,20 @@ void FuseOpGetAttr(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
   return fs->ReplyAttr(req, &attr_out);
 }
 
+static std::string ToString(struct stat* attr) {
+  return fmt::format(
+      "st_ino({}), st_mode({}), st_nlink({}), st_uid({}), "
+      "st_gid({}), st_size({}), st_rdev({}), st_atim({}), "
+      "st_mtim({}), st_ctim({}), st_blksize({}), st_blocks({})",
+      attr->st_ino, attr->st_mode, attr->st_nlink, attr->st_uid, attr->st_gid,
+      attr->st_size, attr->st_rdev, attr->st_atim.tv_sec, attr->st_mtim.tv_sec,
+      attr->st_ctim.tv_sec, attr->st_blksize, attr->st_blocks);
+}
+
 void FuseOpSetAttr(fuse_req_t req, fuse_ino_t ino, struct stat* attr,
                    int to_set, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("SetAttr ino({}) to_set({}) attr[{}].", ino, to_set,
+                           ToString(attr));
   DINGOFS_ERROR rc;
   AttrOut attr_out;
   auto* client = Client();
@@ -426,6 +444,7 @@ void FuseOpSetAttr(fuse_req_t req, fuse_ino_t ino, struct stat* attr,
 }
 
 void FuseOpReadLink(fuse_req_t req, fuse_ino_t ino) {
+  LOG(INFO) << fmt::format("ReadLink ino({}).", ino);
   DINGOFS_ERROR rc;
   std::string link;
   auto* client = Client();
@@ -444,6 +463,9 @@ void FuseOpReadLink(fuse_req_t req, fuse_ino_t ino) {
 
 void FuseOpMkNod(fuse_req_t req, fuse_ino_t parent, const char* name,
                  mode_t mode, dev_t rdev) {
+  LOG(INFO) << fmt::format("MkNod parent({}) size({}) mode({}) rdev({}).",
+                           parent, name, mode, rdev);
+
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -463,6 +485,8 @@ void FuseOpMkNod(fuse_req_t req, fuse_ino_t parent, const char* name,
 
 void FuseOpMkDir(fuse_req_t req, fuse_ino_t parent, const char* name,
                  mode_t mode) {
+  LOG(INFO) << fmt::format("MkDir parent({}) name({}) mode({}).", parent, name,
+                           mode);
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -481,6 +505,8 @@ void FuseOpMkDir(fuse_req_t req, fuse_ino_t parent, const char* name,
 }
 
 void FuseOpUnlink(fuse_req_t req, fuse_ino_t parent, const char* name) {
+  LOG(INFO) << fmt::format("Unlink ino({}) parent({}) name({}).", parent, name);
+
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -494,6 +520,7 @@ void FuseOpUnlink(fuse_req_t req, fuse_ino_t parent, const char* name) {
 }
 
 void FuseOpRmDir(fuse_req_t req, fuse_ino_t parent, const char* name) {
+  LOG(INFO) << fmt::format("RmDir parent({}) name({}).", parent, name);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -508,6 +535,8 @@ void FuseOpRmDir(fuse_req_t req, fuse_ino_t parent, const char* name) {
 
 void FuseOpSymlink(fuse_req_t req, const char* link, fuse_ino_t parent,
                    const char* name) {
+  LOG(INFO) << fmt::format("Symlink parent({}) name({}) link({}).", parent,
+                           name, link);
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -528,6 +557,7 @@ void FuseOpSymlink(fuse_req_t req, const char* link, fuse_ino_t parent,
 void FuseOpRename(fuse_req_t req, fuse_ino_t parent, const char* name,
                   fuse_ino_t newparent, const char* newname,
                   unsigned int flags) {
+  LOG(INFO) << fmt::format("Rename parent({}) name({}).", parent, name);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -543,6 +573,8 @@ void FuseOpRename(fuse_req_t req, fuse_ino_t parent, const char* name,
 
 void FuseOpLink(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent,
                 const char* newname) {
+  LOG(INFO) << fmt::format("Link ino({}) newparent({}) newname({}).", ino,
+                           newparent, newname);
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -561,6 +593,7 @@ void FuseOpLink(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent,
 }
 
 void FuseOpOpen(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Open ino({}).", ino);
   DINGOFS_ERROR rc;
   FileOut file_out;
   auto* client = Client();
@@ -580,6 +613,7 @@ void FuseOpOpen(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
 
 void FuseOpRead(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
                 struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Read ino({}) size({}) off({}).", ino, size, off);
   DINGOFS_ERROR rc;
   size_t r_size = 0;
   std::unique_ptr<char[]> buffer(new char[size]);
@@ -603,6 +637,7 @@ void FuseOpRead(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 
 void FuseOpWrite(fuse_req_t req, fuse_ino_t ino, const char* buf, size_t size,
                  off_t off, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Write ino({}) size({}) off({}).", ino, size, off);
   DINGOFS_ERROR rc;
   FileOut file_out;
   auto* client = Client();
@@ -622,6 +657,7 @@ void FuseOpWrite(fuse_req_t req, fuse_ino_t ino, const char* buf, size_t size,
 }
 
 void FuseOpFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Flush ino({}).", ino);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -635,6 +671,7 @@ void FuseOpFlush(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
 }
 
 void FuseOpRelease(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Release ino({}).", ino);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -649,6 +686,7 @@ void FuseOpRelease(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
 
 void FuseOpFsync(fuse_req_t req, fuse_ino_t ino, int datasync,
                  struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Fsync ino({}) datasync({}).", ino, datasync);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -662,6 +700,7 @@ void FuseOpFsync(fuse_req_t req, fuse_ino_t ino, int datasync,
 }
 
 void FuseOpOpenDir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("OpenDir ino({}).", ino);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -679,6 +718,8 @@ void FuseOpOpenDir(fuse_req_t req, fuse_ino_t ino, struct fuse_file_info* fi) {
 
 void FuseOpReadDir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
                    struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("ReadDir ino({}) fh({}) size({}) off({}).", ino,
+                           fi->fh, size, off);
   DINGOFS_ERROR rc;
   char* buffer;
   size_t r_size;
@@ -699,6 +740,8 @@ void FuseOpReadDir(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 
 void FuseOpReadDirPlus(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
                        struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("ReadDirPlus ino({}) fh({}) size({}) off({}).", ino,
+                           fi->fh, size, off);
   DINGOFS_ERROR rc;
   char* buffer;
   size_t r_size;
@@ -720,6 +763,7 @@ void FuseOpReadDirPlus(fuse_req_t req, fuse_ino_t ino, size_t size, off_t off,
 
 void FuseOpReleaseDir(fuse_req_t req, fuse_ino_t ino,
                       struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("ReleaseDir ino({}) fh({}).", ino, fi->fh);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -733,6 +777,8 @@ void FuseOpReleaseDir(fuse_req_t req, fuse_ino_t ino,
 }
 
 void FuseOpStatFs(fuse_req_t req, fuse_ino_t ino) {
+  LOG(INFO) << fmt::format("StatFs ino({}).", ino);
+
   DINGOFS_ERROR rc;
   struct statvfs stbuf;
   auto* client = Client();
@@ -749,6 +795,9 @@ void FuseOpStatFs(fuse_req_t req, fuse_ino_t ino) {
 
 void FuseOpSetXattr(fuse_req_t req, fuse_ino_t ino, const char* name,
                     const char* value, size_t size, int flags) {
+  LOG(INFO) << fmt::format(
+      "SetXattr ino({}) name({}) value({}) size({}) flags({}).", ino, name,
+      value, size, flags);
   DINGOFS_ERROR rc;
   auto* client = Client();
   auto fs = client->GetFileSystem();
@@ -767,6 +816,8 @@ void FuseOpSetXattr(fuse_req_t req, fuse_ino_t ino, const char* name,
 
 void FuseOpGetXattr(fuse_req_t req, fuse_ino_t ino, const char* name,
                     size_t size) {
+  LOG(INFO) << fmt::format("GetXattr ino({}) name({}) size({}).", ino, name,
+                           size);
   DINGOFS_ERROR rc;
   std::string value;
   auto* client = Client();
@@ -792,6 +843,8 @@ void FuseOpGetXattr(fuse_req_t req, fuse_ino_t ino, const char* name,
 }
 
 void FuseOpListXattr(fuse_req_t req, fuse_ino_t ino, size_t size) {
+  LOG(INFO) << fmt::format("ListXattr ino({}) size({}).", ino, size);
+
   DINGOFS_ERROR rc;
   size_t xattr_size = 0;
   std::unique_ptr<char[]> buf(new char[size]);
@@ -815,6 +868,8 @@ void FuseOpListXattr(fuse_req_t req, fuse_ino_t ino, size_t size) {
 
 void FuseOpCreate(fuse_req_t req, fuse_ino_t parent, const char* name,
                   mode_t mode, struct fuse_file_info* fi) {
+  LOG(INFO) << fmt::format("Create parent({}) name({}) mode({}).", parent, name,
+                           mode);
   DINGOFS_ERROR rc;
   EntryOut entry_out;
   auto* client = Client();
@@ -840,3 +895,5 @@ void FuseOpBmap(fuse_req_t req, fuse_ino_t /*ino*/, size_t /*blocksize*/,
 
   return fs->ReplyError(req, DINGOFS_ERROR::NOTSUPPORT);
 }
+
+#endif  // DINGOFS_OLD_VERSION

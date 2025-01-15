@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <memory>
 
-#include "dingofs/metaserver.pb.h"
 #include "base/timer/timer_impl.h"
 #include "client/common/dynamic_config.h"
 #include "client/filesystem/dir_cache.h"
@@ -33,6 +32,8 @@
 #include "client/filesystem/fs_stat_manager.h"
 #include "client/filesystem/utils.h"
 #include "common/define.h"
+#include "dingofs/metaserver.pb.h"
+#include "fmt/core.h"
 
 namespace dingofs {
 namespace client {
@@ -161,6 +162,18 @@ void FileSystem::ReplyEntry(Request req, EntryOut* entry_out) {
   fuse_entry_param e;
   SetEntryTimeout(entry_out);
   Entry2Param(entry_out, &e);
+
+  LOG(INFO) << fmt::format(
+      "ReplyEntry ino({}) generation({}) entry_timeout({}) attr_timeout({}) "
+      "st_ino({}) st_mode({}) st_nlink({}) st_uid({}) st_gid({}) st_size({}) "
+      "st_rdev({}) st_blksize({}) st_blocks({}) atime({} {}) mtime({} {}) "
+      "ctime({} {}).",
+      e.ino, e.generation, e.entry_timeout, e.attr_timeout, e.attr.st_ino,
+      e.attr.st_mode, e.attr.st_nlink, e.attr.st_uid, e.attr.st_gid,
+      e.attr.st_size, e.attr.st_rdev, e.attr.st_blksize, e.attr.st_blocks,
+      e.attr.st_atim.tv_sec, e.attr.st_atim.tv_nsec, e.attr.st_mtim.tv_sec,
+      e.attr.st_mtim.tv_nsec, e.attr.st_ctim.tv_sec, e.attr.st_ctim.tv_nsec);
+
   fuse_reply_entry(req, &e);
 }
 
@@ -170,6 +183,17 @@ void FileSystem::ReplyAttr(Request req, AttrOut* attr_out) {
   struct stat stat;
   SetAttrTimeout(attr_out);
   Attr2Stat(&attr_out->attr, &stat);
+
+  LOG(INFO) << fmt::format(
+      "ReplyAttr st_ino({}) st_mode({}) st_nlink({}) st_uid({}) st_gid({}) "
+      "st_size({}) "
+      "st_rdev({}) st_blksize({}) st_blocks({}) atime({} {}) mtime({} {}) "
+      "ctime({} {}).",
+      stat.st_ino, stat.st_mode, stat.st_nlink, stat.st_uid, stat.st_gid,
+      stat.st_size, stat.st_rdev, stat.st_blksize, stat.st_blocks,
+      stat.st_atim.tv_sec, stat.st_atim.tv_nsec, stat.st_mtim.tv_sec,
+      stat.st_mtim.tv_nsec, stat.st_ctim.tv_sec, stat.st_ctim.tv_nsec);
+
   fuse_reply_attr(req, &stat, attr_out->attrTimeout);
 }
 
