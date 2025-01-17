@@ -45,6 +45,7 @@ target_link_libraries(fuse_client_lib
     client_common
     mdsv2_common
     mdsv2_coordinator
+    mdsv2_mds
     dingofs_threading
     gflags
     glog

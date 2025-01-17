@@ -233,7 +233,7 @@ int main(int argc, char* argv[]) {
   CHECK(server.InitCoordinatorClient(FLAGS_coor_url)) << "init coordinator client error.";
   CHECK(server.InitFsIdGenerator()) << "init fs id generator error.";
   CHECK(server.InitStorage(FLAGS_coor_url)) << "init storage error.";
-  CHECK(server.InitFileSystem()) << "init file system error.";
+  CHECK(server.InitFileSystem()) << "init file system set error.";
   CHECK(server.InitWorkerSet()) << "init worker set error.";
   CHECK(server.InitHeartbeat()) << "init heartbeat error.";
   CHECK(server.InitCrontab()) << "init crontab error.";

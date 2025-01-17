@@ -50,6 +50,7 @@ class FileSystem {
   }
 
   uint32_t FsId() const { return fs_info_.fs_id(); }
+  std::string FsName() const { return fs_info_.fs_name(); }
 
   // create root dentry/inode when create filesystem
   Status CreateRoot();
@@ -58,7 +59,6 @@ class FileSystem {
   struct MkNodParam {
     std::string name;
     uint32_t flag{0};
-    uint64_t length{0};
     uint32_t uid{0};
     uint32_t gid{0};
     uint32_t mode{0};
@@ -71,7 +71,6 @@ class FileSystem {
   struct MkDirParam {
     std::string name;
     uint32_t flag{0};
-    uint64_t length{0};
     uint32_t uid{0};
     uint32_t gid{0};
     uint32_t mode{0};
@@ -101,6 +100,7 @@ class FileSystem {
   Status GetInode(uint64_t ino, InodePtr& out_inode);
   InodePtr GetInodeFromCache(uint64_t parent_ino, const std::string& name);
   InodePtr GetInodeFromCache(uint64_t ino);
+  Status GetInodeFromStore(uint64_t ino, InodePtr& out_inode);
 
   struct UpdateInodeParam {
     std::vector<std::string> update_fields;
@@ -153,6 +153,7 @@ class FileSystemSet {
   bool Init();
 
   struct CreateFsParam {
+    int64_t mds_id;
     std::string fs_name;
     uint64_t block_size;
     pb::mdsv2::FsType fs_type;
@@ -180,6 +181,9 @@ class FileSystemSet {
 
   bool AddFileSystem(FileSystemPtr fs);
   void DeleteFileSystem(uint32_t fs_id);
+
+  // load already exist filesystem
+  bool LoadFileSystems();
 
   IdGeneratorPtr id_generator_;
   KVStoragePtr kv_storage_;

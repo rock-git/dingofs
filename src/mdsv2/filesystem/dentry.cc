@@ -31,8 +31,8 @@ Dentry::Dentry(uint32_t fs_id, const std::string& name, uint64_t parent_ino, uin
 Dentry::Dentry(const pb::mdsv2::Dentry& dentry)
     : name_(dentry.name()),
       fs_id_(dentry.fs_id()),
-      ino_(dentry.inode_id()),
-      parent_ino_(dentry.parent_inode_id()),
+      ino_(dentry.ino()),
+      parent_ino_(dentry.parent_ino()),
       type_(dentry.type()),
       flag_(dentry.flag()) {
   CHECK(bthread_mutex_init(&mutex_, nullptr) == 0) << "init mutex fail.";
@@ -92,8 +92,8 @@ pb::mdsv2::Dentry Dentry::GenPBDentry() {
   pb::mdsv2::Dentry dentry;
 
   dentry.set_fs_id(fs_id_);
-  dentry.set_inode_id(ino_);
-  dentry.set_parent_inode_id(parent_ino_);
+  dentry.set_ino(ino_);
+  dentry.set_parent_ino(parent_ino_);
   dentry.set_name(name_);
   dentry.set_type(type_);
   dentry.set_flag(flag_);

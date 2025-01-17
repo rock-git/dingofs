@@ -30,7 +30,7 @@ Inode::Inode(const pb::mdsv2::Inode& inode) {
   CHECK(bthread_mutex_init(&mutex_, nullptr) == 0) << "init mutex fail.";
 
   fs_id_ = inode.fs_id();
-  ino_ = inode.inode_id();
+  ino_ = inode.ino();
   length_ = inode.length();
   ctime_ = inode.ctime();
   mtime_ = inode.mtime();
@@ -104,7 +104,7 @@ Inode& Inode::operator=(const Inode& inode) {
 pb::mdsv2::Inode Inode::GenPBInode() {
   pb::mdsv2::Inode inode;
   inode.set_fs_id(fs_id_);
-  inode.set_inode_id(ino_);
+  inode.set_ino(ino_);
   inode.set_length(length_);
   inode.set_ctime(ctime_);
   inode.set_mtime(mtime_);

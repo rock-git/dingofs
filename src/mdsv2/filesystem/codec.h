@@ -35,18 +35,18 @@ class MetaDataCodec {
   static std::string EncodeFSValue(const pb::mdsv2::FsInfo& fs_info);
   static pb::mdsv2::FsInfo DecodeFSValue(const std::string& value);
 
-  static std::string EncodeDentryKey(int fs_id, uint64_t inode_id, const std::string& name);
-  static void DecodeDentryKey(const std::string& key, int& fs_id, uint64_t& inode_id, std::string& name);
+  static std::string EncodeDentryKey(int fs_id, uint64_t ino, const std::string& name);
+  static void DecodeDentryKey(const std::string& key, int& fs_id, uint64_t& ino, std::string& name);
   static std::string EncodeDentryValue(const pb::mdsv2::Dentry& dentry);
   static pb::mdsv2::Dentry DecodeDentryValue(const std::string& value);
 
-  static std::string EncodeDirInodeKey(int fs_id, uint64_t inode_id);
-  static void DecodeDirInodeKey(const std::string& key, int& fs_id, uint64_t& inode_id);
+  static std::string EncodeDirInodeKey(int fs_id, uint64_t ino);
+  static void DecodeDirInodeKey(const std::string& key, int& fs_id, uint64_t& ino);
   static std::string EncodeDirInodeValue(const pb::mdsv2::Inode& inode);
   static pb::mdsv2::Inode DecodeDirInodeValue(const std::string& value);
 
-  static std::string EncodeFileInodeKey(int fs_id, uint64_t inode_id);
-  static void DecodeFileInodeKey(const std::string& key, int& fs_id, uint64_t& inode_id);
+  static std::string EncodeFileInodeKey(int fs_id, uint64_t ino);
+  static void DecodeFileInodeKey(const std::string& key, int& fs_id, uint64_t& ino);
   static std::string EncodeFileInodeValue(const pb::mdsv2::Inode& inode);
   static pb::mdsv2::Inode DecodeFileInodeValue(const std::string& value);
 };

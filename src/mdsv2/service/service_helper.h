@@ -172,7 +172,7 @@ void ServiceClosure<T, U>::Run() {
           response_->ShortDebugString().substr(0, FLAGS_log_print_max_length),
           request_->ShortDebugString().substr(0, FLAGS_log_print_max_length));
     } else {
-      DINGO_LOG(DEBUG) << fmt::format(
+      DINGO_LOG(INFO) << fmt::format(
           "[service.{}][request_id({})][elapsed(ns)({})] Request finish, response: {} request: {}", method_name_,
           request_->request_info().request_id(), elapsed_time,
           response_->ShortDebugString().substr(0, FLAGS_log_print_max_length),

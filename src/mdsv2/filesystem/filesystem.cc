@@ -46,7 +46,7 @@ static const std::string kFsTableName = "dingofs";
 static const std::string kStatsName = ".stats";
 static const std::string kRecyleName = ".recycle";
 
-bool IsReserveNode(uint64_t inode_id) { return inode_id == kRootIno; }
+bool IsReserveNode(uint64_t ino) { return ino == kRootIno; }
 
 bool IsReserveName(const std::string& name) { return name == kStatsName || name == kRecyleName; }
 
@@ -116,7 +116,7 @@ Status FileSystem::MkNod(const MkNodParam& param, uint64_t& out_ino) {
 
   // build inode
   auto inode = Inode::New(fs_id, ino);
-  inode->SetLength(param.length);
+  inode->SetLength(0);
 
   uint64_t now_time = Helper::TimestampNs();
   inode->SetCtime(now_time);
@@ -153,11 +153,13 @@ Status FileSystem::MkNod(const MkNodParam& param, uint64_t& out_ino) {
   KVStorage::WriteOption option;
   status = kv_storage_->Put(option, inode_kv);
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store inode fail");
   }
 
   kv_storage_->Put(option, {dentry_kv, parent_inode_kv});
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     cleanup(inode_kv.key);
     return Status(pb::error::EBACKEND_STORE, "put store dentry/parent_inode fail");
   }
@@ -227,7 +229,7 @@ Status FileSystem::MkDir(const MkDirParam& param, uint64_t& out_ino) {
 
   // build inode
   auto inode = Inode::New(fs_id, ino);
-  inode->SetLength(param.length);
+  inode->SetLength(4096);
 
   uint64_t now_time = Helper::TimestampNs();
   inode->SetCtime(now_time);
@@ -264,11 +266,13 @@ Status FileSystem::MkDir(const MkDirParam& param, uint64_t& out_ino) {
   KVStorage::WriteOption option;
   status = kv_storage_->Put(option, inode_kv);
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store inode fail");
   }
 
   kv_storage_->Put(option, {dentry_kv, parent_inode_kv});
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     cleanup(inode_kv.key);
     return Status(pb::error::EBACKEND_STORE, "put store dentry/parent_inode fail");
   }
@@ -342,6 +346,7 @@ Status FileSystem::Link(uint64_t parent_ino, const std::string& name, uint64_t i
 
   status = kv_storage_->Put(option, {parent_inode_kv, dentry_kv});
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store dentry fail");
   }
 
@@ -412,11 +417,13 @@ Status FileSystem::UnLink(uint64_t parent_ino, const std::string& name) {
   KVStorage::WriteOption option;
   auto status = kv_storage_->Put(option, inode_kv);
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store inode fail");
   }
 
   status = kv_storage_->Put(option, {parent_inode_kv, dentry_kv});
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store dentry/parent_inode fail");
   }
 
@@ -442,7 +449,7 @@ Status FileSystem::Symlink(const pb::mdsv2::SymlinkRequest* request) {
   CHECK(request != nullptr) << "request is nullptr.";
 
   uint32_t fs_id = request->fs_id();
-  uint64_t parent_ino = request->parent_inode_id();
+  uint64_t parent_ino = request->parent_ino();
 
   // validate request
   auto status = ValidateSymlink(request);
@@ -480,7 +487,7 @@ Status FileSystem::Symlink(const pb::mdsv2::SymlinkRequest* request) {
   inode->SetRdev(request->rdev());
 
   // build dentry
-  auto dentry = Dentry::New(fs_id, request->name(), request->parent_inode_id(), ino, pb::mdsv2::FileType::SYM_LINK);
+  auto dentry = Dentry::New(fs_id, request->name(), request->parent_ino(), ino, pb::mdsv2::FileType::SYM_LINK);
   dentry->SetFlag(request->flag());
   dentry->SetInode(inode);
 
@@ -502,11 +509,13 @@ Status FileSystem::Symlink(const pb::mdsv2::SymlinkRequest* request) {
   KVStorage::WriteOption option;
   status = kv_storage_->Put(option, inode_kv);
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store inode fail");
   }
 
   kv_storage_->Put(option, {dentry_kv, parent_inode_kv});
   if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("put fail, error: {}.", status.error_str());
     return Status(pb::error::EBACKEND_STORE, "put store dentry/parent_inode fail");
   }
 
@@ -561,9 +570,16 @@ Status FileSystem::GetInode(uint64_t ino, InodePtr& out_inode) {
     return Status::OK();
   }
 
-  // todo: take from kv storage
+  DINGO_LOG(INFO) << fmt::format("inode({}) not in cache.", ino);
 
-  return Status(pb::error::ENOT_FOUND, fmt::format("inode({}) not found.", ino));
+  auto status = GetInodeFromStore(ino, out_inode);
+  if (!status.ok()) {
+    return status;
+  }
+
+  inode_map_.AddInode(out_inode);
+
+  return Status::OK();
 }
 
 InodePtr FileSystem::GetInodeFromCache(uint64_t parent_ino, const std::string& name) {
@@ -590,15 +606,48 @@ InodePtr FileSystem::GetInodeFromCache(uint64_t parent_ino, const std::string& n
 
 InodePtr FileSystem::GetInodeFromCache(uint64_t ino) { return inode_map_.GetInode(ino); }
 
+Status FileSystem::GetInodeFromStore(uint64_t ino, InodePtr& out_inode) {
+  std::string value;
+  auto status = kv_storage_->Get(MetaDataCodec::EncodeDirInodeKey(fs_info_.fs_id(), ino), value);
+  if (status.ok()) {
+    out_inode = Inode::New(MetaDataCodec::DecodeDirInodeValue(value));
+    return Status::OK();
+
+  } else if (status.error_code() != pb::error::ENOT_FOUND) {
+    DINGO_LOG(ERROR) << fmt::format("get store inode({}) fail, {}.", ino, status.error_str());
+    return status;
+  }
+
+  status = kv_storage_->Get(MetaDataCodec::EncodeFileInodeKey(fs_info_.fs_id(), ino), value);
+  if (status.ok()) {
+    out_inode = Inode::New(MetaDataCodec::DecodeFileInodeValue(value));
+    return Status::OK();
+  } else if (status.error_code() != pb::error::ENOT_FOUND) {
+    DINGO_LOG(ERROR) << fmt::format("get store inode({}) fail, {}.", ino, status.error_str());
+    return status;
+  }
+
+  return Status(pb::error::ENOT_FOUND, fmt::format("inode({}) not found.", ino));
+}
+
 Status FileSystem::UpdateInode(const UpdateInodeParam& param, InodePtr& out_inode) { return Status::OK(); }
 
 Status FileSystem::GetXAttr(uint64_t ino, Inode::XAttrMap& xattr) {
   auto inode = inode_map_.GetInode(ino);
-  if (inode == nullptr) {
+  if (inode != nullptr) {
+    xattr = inode->GetXAttrMap();
     return Status(pb::error::ENOT_FOUND, fmt::format("inode({}) not found.", ino));
   }
 
-  xattr = inode->GetXAttrMap();
+  InodePtr temp_inode;
+  auto status = GetInodeFromStore(ino, temp_inode);
+  if (!status.ok()) {
+    return status;
+  }
+
+  xattr = temp_inode->GetXAttrMap();
+
+  inode_map_.AddInode(temp_inode);
 
   return Status::OK();
 }
@@ -626,13 +675,16 @@ FileSystemSet::FileSystemSet(IdGeneratorPtr id_generator, KVStoragePtr kv_storag
 FileSystemSet::~FileSystemSet() { CHECK(bthread_mutex_destroy(&mutex_) == 0) << "destory mutex fail."; }
 
 bool FileSystemSet::Init() {
-  if (IsExistFsTable()) {
-    return true;
+  if (!IsExistFsTable()) {
+    auto status = CreateFsTable();
+    if (!status.ok()) {
+      DINGO_LOG(ERROR) << "create fs table fail, error: " << status.error_str();
+      return false;
+    }
   }
 
-  auto status = CreateFsTable();
-  if (!status.ok()) {
-    DINGO_LOG(ERROR) << "create fs table fail, error: " << status.error_str();
+  if (!LoadFileSystems()) {
+    DINGO_LOG(ERROR) << "load already exist file systems fail.";
     return false;
   }
 
@@ -657,6 +709,9 @@ pb::mdsv2::FsInfo FileSystemSet::GenFsInfo(int64_t fs_id, const CreateFsParam& p
   fs_info.set_recycle_time_hour(param.recycle_time_hour);
   fs_info.mutable_detail()->CopyFrom(param.fs_detail);
 
+  fs_info.set_epoch(1);
+  fs_info.add_mds_ids(param.mds_id);
+
   return fs_info;
 }
 
@@ -664,7 +719,7 @@ Status FileSystemSet::CreateFsTable() {
   int64_t table_id = 0;
   KVStorage::TableOption option;
   MetaDataCodec::GetFsTableRange(option.start_key, option.end_key);
-  DINGO_LOG(INFO) << fmt::format("Create fs table, start_key({}), end_key({}).", Helper::StringToHex(option.start_key),
+  DINGO_LOG(INFO) << fmt::format("create fs table, start_key({}), end_key({}).", Helper::StringToHex(option.start_key),
                                  Helper::StringToHex(option.end_key));
   return kv_storage_->CreateTable(kFsTableName, option, table_id);
 }
@@ -672,7 +727,7 @@ Status FileSystemSet::CreateFsTable() {
 bool FileSystemSet::IsExistFsTable() {
   std::string start_key, end_key;
   MetaDataCodec::GetFsTableRange(start_key, end_key);
-  DINGO_LOG(INFO) << fmt::format("Check fs table, start_key({}), end_key({}).", Helper::StringToHex(start_key),
+  DINGO_LOG(INFO) << fmt::format("check fs table, start_key({}), end_key({}).", Helper::StringToHex(start_key),
                                  Helper::StringToHex(end_key));
   auto status = kv_storage_->IsExistTable(start_key, end_key);
   if (!status.ok()) {
@@ -681,6 +736,8 @@ bool FileSystemSet::IsExistFsTable() {
     }
     return false;
   }
+
+  DINGO_LOG(INFO) << "exist fs table.";
 
   return true;
 }
@@ -698,7 +755,7 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
     if (dentry_table_id > 0) {
       auto status = kv_storage_->DropTable(dentry_table_id);
       if (!status.ok()) {
-        LOG(ERROR) << fmt::format("Clean dentry table({}) fail, error: {}", dentry_table_id, status.error_str());
+        LOG(ERROR) << fmt::format("clean dentry table({}) fail, error: {}", dentry_table_id, status.error_str());
       }
     }
 
@@ -706,7 +763,7 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
     if (file_inode_table_id > 0) {
       auto status = kv_storage_->DropTable(file_inode_table_id);
       if (!status.ok()) {
-        LOG(ERROR) << fmt::format("Clean file inode table({}) fail, error: {}", file_inode_table_id,
+        LOG(ERROR) << fmt::format("clean file inode table({}) fail, error: {}", file_inode_table_id,
                                   status.error_str());
       }
     }
@@ -715,7 +772,7 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
     if (!fs_key.empty()) {
       auto status = kv_storage_->Delete(fs_key);
       if (!status.ok()) {
-        LOG(ERROR) << fmt::format("Clean fs info fail, error: {}", status.error_str());
+        LOG(ERROR) << fmt::format("clean fs info fail, error: {}", status.error_str());
       }
     }
   };
@@ -726,7 +783,11 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
     std::string value;
     Status status = kv_storage_->Get(fs_key, value);
     if (!status.ok() && status.error_code() != pb::error::ENOT_FOUND) {
-      return Status(pb::error::EINTERNAL, "Get fs info fail");
+      return Status(pb::error::EINTERNAL, "get fs info fail");
+    }
+
+    if (status.ok() && !value.empty()) {
+      return Status(pb::error::EEXISTED, fmt::format("fs({}) exist.", param.fs_name));
     }
   }
 
@@ -735,9 +796,10 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
   {
     KVStorage::TableOption option;
     MetaDataCodec::GetDentryTableRange(fs_id, option.start_key, option.end_key);
-    Status status = kv_storage_->CreateTable(param.fs_name, option, dentry_table_id);
+    std::string table_name = fmt::format("{}_{}_dentry", param.fs_name, fs_id);
+    Status status = kv_storage_->CreateTable(table_name, option, dentry_table_id);
     if (!status.ok()) {
-      return Status(pb::error::EINTERNAL, "Create dentry table fail");
+      return Status(pb::error::EINTERNAL, fmt::format("create dentry table fail, {}", status.error_str()));
     }
   }
 
@@ -746,10 +808,11 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
   {
     KVStorage::TableOption option;
     MetaDataCodec::GetFileInodeTableRange(fs_id, option.start_key, option.end_key);
-    Status status = kv_storage_->CreateTable(param.fs_name, option, file_inode_table_id);
+    std::string table_name = fmt::format("{}_{}_finode", param.fs_name, fs_id);
+    Status status = kv_storage_->CreateTable(table_name, option, file_inode_table_id);
     if (!status.ok()) {
       cleanup(dentry_table_id, 0, "");
-      return Status(pb::error::EINTERNAL, "Create file inode table fail");
+      return Status(pb::error::EINTERNAL, fmt::format("create file inode table fail, {}", status.error_str()));
     }
   }
 
@@ -760,18 +823,18 @@ Status FileSystemSet::CreateFs(const CreateFsParam& param, int64_t& fs_id) {
   status = kv_storage_->Put(option, fs_key, MetaDataCodec::EncodeFSValue(fs_info));
   if (!status.ok()) {
     cleanup(dentry_table_id, file_inode_table_id, "");
-    return Status(pb::error::EBACKEND_STORE, "Put store fs fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store fs fail, {}", status.error_str()));
   }
 
   // create FileSystem instance
   auto fs = FileSystem::New(fs_info, id_generator_, kv_storage_);
-  CHECK(AddFileSystem(fs)) << fmt::format("Add FileSystem({}) fail.", fs->FsId());
+  CHECK(AddFileSystem(fs)) << fmt::format("add FileSystem({}) fail.", fs->FsId());
 
   // create root inode
   status = fs->CreateRoot();
   if (!status.ok()) {
     cleanup(dentry_table_id, file_inode_table_id, fs_key);
-    return Status(pb::error::EINTERNAL, "create root fail");
+    return Status(pb::error::EINTERNAL, fmt::format("create root fail, {}", status.error_str()));
   }
 
   return Status::OK();
@@ -787,7 +850,7 @@ Status FileSystem::CreateRoot() {
     if (!dentry_key.empty()) {
       auto status = kv_storage_->Delete(dentry_key);
       if (!status.ok()) {
-        LOG(ERROR) << fmt::format("Clean dentry kv fail, error: {}", status.error_str());
+        LOG(ERROR) << fmt::format("clean dentry kv fail, {}", status.error_str());
       }
     }
   };
@@ -799,7 +862,7 @@ Status FileSystem::CreateRoot() {
   std::string dentry_value = MetaDataCodec::EncodeDentryValue(dentry->GenPBDentry());
   Status status = kv_storage_->Put(option, dentry_key, dentry_value);
   if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, "Put store root dentry fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store root dentry fail, {}", status.error_str()));
   }
 
   auto inode = Inode::New(fs_id, kRootIno);
@@ -809,10 +872,10 @@ Status FileSystem::CreateRoot() {
   inode->SetCtime(now_ns);
   inode->SetMtime(now_ns);
   inode->SetAtime(now_ns);
-  inode->SetUid(0);
-  inode->SetGid(0);
-  inode->SetMode(S_IFDIR | 01777);
-  inode->SetNlink(1);
+  inode->SetUid(1008);
+  inode->SetGid(1008);
+  inode->SetMode(S_IFDIR | S_IRUSR | S_IWUSR | S_IRGRP | S_IXUSR | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH | S_IXOTH);
+  inode->SetNlink(2);
   inode->SetType(pb::mdsv2::FileType::DIRECTORY);
   inode->SetRdev(0);
 
@@ -821,7 +884,7 @@ Status FileSystem::CreateRoot() {
   status = kv_storage_->Put(option, inode_key, inode_value);
   if (!status.ok()) {
     cleanup(dentry_key);
-    return Status(pb::error::EBACKEND_STORE, "Put store root inode fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store root inode fail, {}", status.error_str()));
   }
 
   dentry->SetInode(inode);
@@ -842,26 +905,26 @@ bool IsExistMountPoint(const pb::mdsv2::FsInfo& fs_info, const pb::mdsv2::MountP
 }
 
 Status FileSystemSet::MountFs(const std::string& fs_name, const pb::mdsv2::MountPoint& mount_point) {
-  CHECK(!fs_name.empty()) << "Fs name is empty.";
+  CHECK(!fs_name.empty()) << "fs name is empty.";
 
   std::string fs_key = MetaDataCodec::EncodeFSKey(fs_name);
   std::string value;
   Status status = kv_storage_->Get(fs_key, value);
   if (!status.ok()) {
-    return Status(pb::error::ENOT_FOUND, fmt::format("Not found fs({}).", fs_name));
+    return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
   }
 
   auto fs_info = MetaDataCodec::DecodeFSValue(value);
 
   if (IsExistMountPoint(fs_info, mount_point)) {
-    return Status(pb::error::EEXISTED, "MountPoint already exist.");
+    return Status(pb::error::EEXISTED, "mountPoint already exist.");
   }
 
   fs_info.add_mount_points()->CopyFrom(mount_point);
   KVStorage::WriteOption option;
   status = kv_storage_->Put(option, fs_key, MetaDataCodec::EncodeFSValue(fs_info));
   if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, "Put store fs fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store fs fail, {}", status.error_str()));
   }
 
   return Status::OK();
@@ -883,7 +946,7 @@ Status FileSystemSet::UmountFs(const std::string& fs_name, const pb::mdsv2::Moun
   std::string value;
   Status status = kv_storage_->Get(fs_key, value);
   if (!status.ok()) {
-    return Status(pb::error::ENOT_FOUND, fmt::format("Not found fs({}).", fs_name));
+    return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
   }
 
   auto fs_info = MetaDataCodec::DecodeFSValue(value);
@@ -893,7 +956,7 @@ Status FileSystemSet::UmountFs(const std::string& fs_name, const pb::mdsv2::Moun
   KVStorage::WriteOption option;
   status = kv_storage_->Put(option, fs_key, MetaDataCodec::EncodeFSValue(fs_info));
   if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, "Put store fs fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store fs fail, {}", status.error_str()));
   }
 
   return Status::OK();
@@ -906,7 +969,7 @@ Status FileSystemSet::DeleteFs(const std::string& fs_name) {
   std::string value;
   Status status = kv_storage_->Get(fs_key, value);
   if (!status.ok()) {
-    return Status(pb::error::ENOT_FOUND, fmt::format("Not found fs({}).", fs_name));
+    return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
   }
 
   auto fs_info = MetaDataCodec::DecodeFSValue(value);
@@ -916,14 +979,14 @@ Status FileSystemSet::DeleteFs(const std::string& fs_name) {
 
   status = kv_storage_->Delete(fs_key);
   if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, "Delete fs fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("Delete fs fail, {}", status.error_str()));
   }
 
   KVStorage::WriteOption option;
   std::string delete_fs_name = fmt::format("{}_deleting", fs_name);
   status = kv_storage_->Put(option, MetaDataCodec::EncodeFSKey(delete_fs_name), MetaDataCodec::EncodeFSValue(fs_info));
   if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, "Put store fs fail");
+    return Status(pb::error::EBACKEND_STORE, fmt::format("put store fs fail, {}", status.error_str()));
   }
 
   DeleteFileSystem(fs_info.fs_id());
@@ -936,7 +999,7 @@ Status FileSystemSet::GetFsInfo(const std::string& fs_name, pb::mdsv2::FsInfo& f
   std::string value;
   Status status = kv_storage_->Get(fs_key, value);
   if (!status.ok()) {
-    return Status(pb::error::ENOT_FOUND, fmt::format("Not found fs({}).", fs_name));
+    return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
   }
 
   fs_info = MetaDataCodec::DecodeFSValue(value);
@@ -947,9 +1010,11 @@ Status FileSystemSet::GetFsInfo(const std::string& fs_name, pb::mdsv2::FsInfo& f
 bool FileSystemSet::AddFileSystem(FileSystemPtr fs) {
   BAIDU_SCOPED_LOCK(mutex_);
 
+  DINGO_LOG(INFO) << fmt::format("add filesystem {} {}.", fs->FsName(), fs->FsId());
+
   auto it = fs_map_.find(fs->FsId());
   if (it != fs_map_.end()) {
-    DINGO_LOG(ERROR) << fmt::format("Fs({}) already exist.", fs->FsId());
+    DINGO_LOG(ERROR) << fmt::format("fs({}) already exist.", fs->FsId());
     return false;
   }
 
@@ -969,6 +1034,28 @@ FileSystemPtr FileSystemSet::GetFileSystem(uint32_t fs_id) {
 
   auto it = fs_map_.find(fs_id);
   return it != fs_map_.end() ? it->second : nullptr;
+}
+
+bool FileSystemSet::LoadFileSystems() {
+  Range range;
+  MetaDataCodec::GetFsTableRange(range.start_key, range.end_key);
+
+  // scan fs table from kv storage
+  std::vector<KeyValue> kvs;
+  auto status = kv_storage_->Scan(range, kvs);
+  if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("scan fs table fail, error: {}.", status.error_str());
+    return false;
+  }
+
+  for (const auto& kv : kvs) {
+    auto fs_info = MetaDataCodec::DecodeFSValue(kv.value);
+    DINGO_LOG(INFO) << fmt::format("load fs info({}).", fs_info.ShortDebugString());
+    auto fs = FileSystem::New(fs_info, id_generator_, kv_storage_);
+    CHECK(AddFileSystem(fs)) << fmt::format("add FileSystem({}) fail.", fs->FsId());
+  }
+
+  return true;
 }
 
 }  // namespace mdsv2

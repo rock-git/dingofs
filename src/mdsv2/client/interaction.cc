@@ -18,7 +18,7 @@ namespace dingofs {
 namespace mdsv2 {
 namespace client {
 
-DEFINE_int32(timeout_ms, 1000, "Timeout for each request");
+DEFINE_int32(timeout_ms, 8000, "Timeout for each request");
 DEFINE_bool(log_each_request, false, "print log each request");
 
 bool Interaction::Init(const std::string& addr) {

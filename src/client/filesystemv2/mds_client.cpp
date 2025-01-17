@@ -14,6 +14,8 @@
 
 #include "client/filesystemv2/mds_client.h"
 
+#include <fmt/format.h>
+
 #include <cstdint>
 #include <string>
 
@@ -24,10 +26,6 @@
 namespace dingofs {
 namespace client {
 namespace filesystem {
-
-bool MDSClient::Init() { return true; }
-
-void MDSClient::Destory() {}
 
 static pb::metaserver::FsFileType ToFsFileType(pb::mdsv2::FileType type) {
   switch (type) {
@@ -42,10 +40,10 @@ static pb::metaserver::FsFileType ToFsFileType(pb::mdsv2::FileType type) {
   }
 }
 
-static void FillInodeAttr(const pb::mdsv2::Inode& inode, EntryOut* entry_out) {
-  auto& attr = entry_out->attr;
+static void FillInodeAttr(const pb::mdsv2::Inode& inode, EntryOut& entry_out) {
+  auto& attr = entry_out.attr;
 
-  attr.set_inodeid(inode.inode_id());
+  attr.set_inodeid(inode.ino());
   attr.set_fsid(inode.fs_id());
   attr.set_length(inode.length());
 
@@ -70,10 +68,10 @@ static void FillInodeAttr(const pb::mdsv2::Inode& inode, EntryOut* entry_out) {
   *(attr.mutable_xattr()) = inode.xattr();
 }
 
-static void FillInodeAttr(const pb::mdsv2::Inode& inode, AttrOut* entry_out) {
-  auto& attr = entry_out->attr;
+static void FillInodeAttr(const pb::mdsv2::Inode& inode, AttrOut& entry_out) {
+  auto& attr = entry_out.attr;
 
-  attr.set_inodeid(inode.inode_id());
+  attr.set_inodeid(inode.ino());
   attr.set_fsid(inode.fs_id());
   attr.set_length(inode.length());
 
@@ -96,15 +94,72 @@ static void FillInodeAttr(const pb::mdsv2::Inode& inode, AttrOut* entry_out) {
   attr.set_symlink(inode.symlink());
 
   *(attr.mutable_xattr()) = inode.xattr();
+}
+
+bool MDSClient::Init() { return true; }
+
+void MDSClient::Destory() {}
+
+bool MDSClient::SetEndpoint(const std::string& ip, int port, bool is_default) {
+  return rpc_->AddEndpoint(ip, port, is_default);
+}
+
+Status MDSClient::GetFsInfo(const std::string& name,
+                            pb::mdsv2::FsInfo& fs_info) {
+  pb::mdsv2::GetFsInfoRequest request;
+  pb::mdsv2::GetFsInfoResponse response;
+
+  request.set_fs_name(name);
+
+  auto status = rpc_->SendRequest("MDSService", "GetFsInfo", request, response);
+  if (!status.ok()) {
+    return status;
+  }
+
+  fs_info = response.fs_info();
+
+  return Status::OK();
+}
+
+Status MDSClient::MountFs(const std::string& name,
+                          const pb::mdsv2::MountPoint& mount_point) {
+  pb::mdsv2::MountFsRequest request;
+  pb::mdsv2::MountFsResponse response;
+
+  request.set_fs_name(name);
+  request.mutable_mount_point()->CopyFrom(mount_point);
+
+  auto status = rpc_->SendRequest("MDSService", "MountFs", request, response);
+  if (!status.ok()) {
+    return status;
+  }
+
+  return Status::OK();
+}
+
+Status MDSClient::UmountFs(const std::string& name,
+                           const pb::mdsv2::MountPoint& mount_point) {
+  pb::mdsv2::UmountFsRequest request;
+  pb::mdsv2::UmountFsResponse response;
+
+  request.set_fs_name(name);
+  request.mutable_mount_point()->CopyFrom(mount_point);
+
+  auto status = rpc_->SendRequest("MDSService", "UmountFs", request, response);
+  if (!status.ok()) {
+    return status;
+  }
+
+  return Status::OK();
 }
 
 Status MDSClient::Lookup(uint32_t fs_id, uint64_t parent_ino,
-                         const std::string& name, EntryOut* entry_out) {
+                         const std::string& name, EntryOut& entry_out) {
   pb::mdsv2::LookupRequest request;
   pb::mdsv2::LookupResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
 
   auto status = rpc_->SendRequest("MDSService", "Lookup", request, response);
@@ -112,19 +167,19 @@ Status MDSClient::Lookup(uint32_t fs_id, uint64_t parent_ino,
     return status;
   }
 
-  FillInodeAttr(response.inode(), entry_out);
+  entry_out.inode = response.inode();
 
   return Status::OK();
 }
 
 Status MDSClient::MkNod(uint32_t fs_id, uint64_t parent_ino,
                         const std::string& name, uint32_t uid, uint32_t gid,
-                        mode_t mode, dev_t rdev, EntryOut* entry_out) {
+                        mode_t mode, dev_t rdev, EntryOut& entry_out) {
   pb::mdsv2::MkNodRequest request;
   pb::mdsv2::MkNodResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
   request.set_mode(mode);
   request.set_type(pb::mdsv2::FileType::FILE);
@@ -139,19 +194,19 @@ Status MDSClient::MkNod(uint32_t fs_id, uint64_t parent_ino,
     return status;
   }
 
-  FillInodeAttr(response.inode(), entry_out);
+  entry_out.inode = response.inode();
 
   return Status::OK();
 }
 
 Status MDSClient::MkDir(uint32_t fs_id, uint64_t parent_ino,
                         const std::string& name, uint32_t uid, uint32_t gid,
-                        mode_t mode, dev_t rdev, EntryOut* entry_out) {
+                        mode_t mode, dev_t rdev, EntryOut& entry_out) {
   pb::mdsv2::MkDirRequest request;
   pb::mdsv2::MkDirResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
   request.set_mode(mode);
   request.set_type(pb::mdsv2::FileType::DIRECTORY);
@@ -166,7 +221,7 @@ Status MDSClient::MkDir(uint32_t fs_id, uint64_t parent_ino,
     return status;
   }
 
-  FillInodeAttr(response.inode(), entry_out);
+  entry_out.inode = response.inode();
 
   return Status::OK();
 }
@@ -177,7 +232,7 @@ Status MDSClient::RmDir(uint32_t fs_id, uint64_t parent_ino,
   pb::mdsv2::RmDirResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
 
   auto status = rpc_->SendRequest("MDSService", "RmDir", request, response);
@@ -194,8 +249,8 @@ Status MDSClient::Link(uint32_t fs_id, uint64_t parent_ino, uint64_t ino,
   pb::mdsv2::LinkResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
-  request.set_inode_id(ino);
+  request.set_parent_ino(parent_ino);
+  request.set_ino(ino);
   request.set_name(name);
 
   auto status = rpc_->SendRequest("MDSService", "Link", request, response);
@@ -212,7 +267,7 @@ Status MDSClient::UnLink(uint32_t fs_id, uint64_t parent_ino,
   pb::mdsv2::UnLinkResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
 
   auto status = rpc_->SendRequest("MDSService", "UnLink", request, response);
@@ -224,12 +279,12 @@ Status MDSClient::UnLink(uint32_t fs_id, uint64_t parent_ino,
 
 Status MDSClient::Symlink(uint32_t fs_id, uint64_t parent_ino,
                           const std::string& name, uint32_t uid, uint32_t gid,
-                          const std::string& symlink, EntryOut* entry_out) {
+                          const std::string& symlink, EntryOut& entry_out) {
   pb::mdsv2::SymlinkRequest request;
   pb::mdsv2::SymlinkResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_parent_inode_id(parent_ino);
+  request.set_parent_ino(parent_ino);
   request.set_name(name);
   request.set_mode(S_IFLNK | 0777);
   request.set_uid(uid);
@@ -243,7 +298,7 @@ Status MDSClient::Symlink(uint32_t fs_id, uint64_t parent_ino,
     return status;
   }
 
-  FillInodeAttr(response.inode(), entry_out);
+  entry_out.inode = response.inode();
 
   return Status::OK();
 }
@@ -253,7 +308,7 @@ Status MDSClient::ReadLink(uint32_t fs_id, uint64_t ino, std::string& symlink) {
   pb::mdsv2::ReadLinkResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
 
   auto status = rpc_->SendRequest("MDSService", "ReadLink", request, response);
   if (!status.ok()) {
@@ -265,19 +320,19 @@ Status MDSClient::ReadLink(uint32_t fs_id, uint64_t ino, std::string& symlink) {
   return Status::OK();
 }
 
-Status MDSClient::GetAttr(uint32_t fs_id, uint64_t ino, EntryOut* entry_out) {
+Status MDSClient::GetAttr(uint32_t fs_id, uint64_t ino, AttrOut& entry_out) {
   pb::mdsv2::GetAttrRequest request;
   pb::mdsv2::GetAttrResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
 
   auto status = rpc_->SendRequest("MDSService", "GetAttr", request, response);
   if (!status.ok()) {
     return status;
   }
 
-  FillInodeAttr(response.inode(), entry_out);
+  entry_out.inode = response.inode();
 
   return Status::OK();
 }
@@ -287,12 +342,12 @@ static uint64_t ToTimestamp(const struct timespec& ts) {
 }
 
 Status MDSClient::SetAttr(uint32_t fs_id, uint64_t ino, struct stat* attr,
-                          int to_set, AttrOut* attr_out) {
+                          int to_set, AttrOut& attr_out) {
   pb::mdsv2::SetAttrRequest request;
   pb::mdsv2::SetAttrResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
 
   if (to_set & FUSE_SET_ATTR_MODE) {
     request.set_mode(attr->st_mode);
@@ -346,7 +401,7 @@ Status MDSClient::SetAttr(uint32_t fs_id, uint64_t ino, struct stat* attr,
     return status;
   }
 
-  FillInodeAttr(response.inode(), attr_out);
+  attr_out.inode = response.inode();
 
   return Status::OK();
 }
@@ -357,7 +412,7 @@ Status MDSClient::GetXAttr(uint32_t fs_id, uint64_t ino,
   pb::mdsv2::GetXAttrResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
   request.set_name(name);
 
   auto status = rpc_->SendRequest("MDSService", "GetXAttr", request, response);
@@ -376,7 +431,7 @@ Status MDSClient::SetXAttr(uint32_t fs_id, uint64_t ino,
   pb::mdsv2::SetXAttrResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
   request.mutable_xattrs()->insert({name, value});
 
   auto status = rpc_->SendRequest("MDSService", "SetXAttr", request, response);
@@ -393,7 +448,7 @@ Status MDSClient::ListXAttr(uint32_t fs_id, uint64_t ino,
   pb::mdsv2::ListXAttrResponse response;
 
   request.set_fs_id(fs_id);
-  request.set_inode_id(ino);
+  request.set_ino(ino);
 
   auto status = rpc_->SendRequest("MDSService", "ListXAttr", request, response);
   if (!status.ok()) {

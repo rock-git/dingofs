@@ -16,33 +16,50 @@
 #define DINGOFS_SRC_CLIENT_FILESYSTEMV2_MDS_CLIENT_H_
 
 #include <memory>
+#include <string>
 
 #include "client/common/dynamic_config.h"
 #include "client/filesystem/meta.h"
 #include "client/filesystemv2/rpc.h"
+#include "dingofs/mdsv2.pb.h"
 #include "mdsv2/common/status.h"
 
 namespace dingofs {
 namespace client {
 namespace filesystem {
 
+class MDSClient;
+using MDSClientPtr = std::shared_ptr<MDSClient>;
+
 class MDSClient {
  public:
-  MDSClient() = default;
+  MDSClient(RPCPtr rpc) : rpc_(rpc) {}
   virtual ~MDSClient() = default;
+
+  static MDSClientPtr New(RPCPtr rpc) {
+    return std::make_shared<MDSClient>(rpc);
+  }
 
   bool Init();
   void Destory();
 
+  bool SetEndpoint(const std::string& ip, int port, bool is_default);
+
+  Status GetFsInfo(const std::string& name, pb::mdsv2::FsInfo& fs_info);
+  Status MountFs(const std::string& name,
+                 const pb::mdsv2::MountPoint& mount_point);
+  Status UmountFs(const std::string& name,
+                  const pb::mdsv2::MountPoint& mount_point);
+
   Status Lookup(uint32_t fs_id, uint64_t parent_ino, const std::string& name,
-                EntryOut* entry_out);
+                EntryOut& entry_out);
 
   Status MkNod(uint32_t fs_id, uint64_t parent_ino, const std::string& name,
                uint32_t uid, uint32_t gid, mode_t mode, dev_t rdev,
-               EntryOut* entry_out);
+               EntryOut& entry_out);
   Status MkDir(uint32_t fs_id, uint64_t parent_ino, const std::string& name,
                uint32_t uid, uint32_t gid, mode_t mode, dev_t rdev,
-               EntryOut* entry_out);
+               EntryOut& entry_out);
   Status RmDir(uint32_t fs_id, uint64_t parent_ino, const std::string& name);
 
   Status Link(uint32_t fs_id, uint64_t parent_ino, uint64_t ino,
@@ -50,12 +67,12 @@ class MDSClient {
   Status UnLink(uint32_t fs_id, uint64_t parent_ino, const std::string& name);
   Status Symlink(uint32_t fs_id, uint64_t parent_ino, const std::string& name,
                  uint32_t uid, uint32_t gid, const std::string& symlink,
-                 EntryOut* entry_out);
+                 EntryOut& entry_out);
   Status ReadLink(uint32_t fs_id, uint64_t ino, std::string& symlink);
 
-  Status GetAttr(uint32_t fs_id, uint64_t ino, EntryOut* entry_out);
+  Status GetAttr(uint32_t fs_id, uint64_t ino, AttrOut& entry_out);
   Status SetAttr(uint32_t fs_id, uint64_t ino, struct stat* attr, int to_set,
-                 AttrOut* attr_out);
+                 AttrOut& attr_out);
   Status GetXAttr(uint32_t fs_id, uint64_t ino, const std::string& name,
                   std::string& value);
   Status SetXAttr(uint32_t fs_id, uint64_t ino, const std::string& name,
@@ -68,7 +85,6 @@ class MDSClient {
  private:
   RPCPtr rpc_;
 };
-using MDSClientPtr = std::shared_ptr<MDSClient>;
 
 }  // namespace filesystem
 }  // namespace client

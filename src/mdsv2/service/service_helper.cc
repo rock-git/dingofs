@@ -33,7 +33,7 @@ void ServiceHelper::SetError(pb::error::Error* error, int errcode, const std::st
 
 void ServiceHelper::Inode2PBInode(InodePtr inode, pb::mdsv2::Inode* pb_inode) {
   pb_inode->set_fs_id(inode->GetFsId());
-  pb_inode->set_inode_id(inode->GetIno());
+  pb_inode->set_ino(inode->GetIno());
   pb_inode->set_length(inode->GetLength());
   pb_inode->set_ctime(inode->GetCtime());
   pb_inode->set_mtime(inode->GetMtime());
