@@ -20,6 +20,9 @@
  * Author: xuchaojie
  */
 
+// #define USE_DINGOFS_V1_FILESYSTEM 1
+#ifdef USE_DINGOFS_V1_FILESYSTEM
+
 #include "client/dingo_fuse_op.h"
 
 #include <cstring>
@@ -70,8 +73,6 @@ using dingofs::pb::common::FSType;
 using dingofs::pb::mds::FsInfo;
 using dingofs::pb::mds::FSStatusCode;
 using dingofs::pb::mds::FSStatusCode_Name;
-
-#ifdef DINGOFS_OLD_VERSION
 
 static FuseClient* g_client_instance = nullptr;
 static FuseClientOption* g_fuse_client_option = nullptr;
@@ -896,4 +897,4 @@ void FuseOpBmap(fuse_req_t req, fuse_ino_t /*ino*/, size_t /*blocksize*/,
   return fs->ReplyError(req, DINGOFS_ERROR::NOTSUPPORT);
 }
 
-#endif  // DINGOFS_OLD_VERSION
+#endif  // USE_DINGOFS_V1_FILESYSTEM
