@@ -752,6 +752,7 @@ Status MDSClient::WriteSlice(Ino ino, uint64_t index,
   pb::mdsv2::WriteSliceResponse response;
 
   request.set_fs_id(fs_id_);
+  request.set_ino(ino);
   request.set_chunk_index(index);
 
   for (const auto& slice : slices) {
@@ -771,7 +772,8 @@ bool MDSClient::UpdateRouter() {
   pb::mdsv2::FsInfo new_fs_info;
   auto status = MDSClient::GetFsInfo(rpc_, fs_info_->GetName(), new_fs_info);
   if (!status.ok()) {
-    LOG(ERROR) << fmt::format("get fs info fail, {}.", status.ToString());
+    LOG(ERROR) << fmt::format("[meta] get fs info fail, {}.",
+                              status.ToString());
     return false;
   }
 
@@ -781,7 +783,7 @@ bool MDSClient::UpdateRouter() {
   fs_info_->Update(new_fs_info);
 
   if (!mds_router_->UpdateRouter(new_fs_info.partition_policy())) {
-    LOG(ERROR) << "update mds router fail.";
+    LOG(ERROR) << "[meta] update mds router fail.";
   }
 
   return true;

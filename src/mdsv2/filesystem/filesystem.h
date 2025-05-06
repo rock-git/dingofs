@@ -59,11 +59,11 @@ struct EntryOut {
 
 class FileSystem : public std::enable_shared_from_this<FileSystem> {
  public:
-  FileSystem(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorPtr id_generator, KVStorageSPtr kv_storage,
+  FileSystem(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorUPtr id_generator, KVStorageSPtr kv_storage,
              RenamerPtr renamer, MutationProcessorSPtr mutation_processor, MDSMetaMapSPtr mds_meta_map);
   ~FileSystem() = default;
 
-  static FileSystemSPtr New(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorPtr id_generator,
+  static FileSystemSPtr New(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorUPtr id_generator,
                             KVStorageSPtr kv_storage, RenamerPtr renamer, MutationProcessorSPtr mutation_processor,
                             MDSMetaMapSPtr mds_meta_map) {
     return std::make_shared<FileSystem>(self_mds_id, std::move(fs_info), std::move(id_generator), kv_storage, renamer,
@@ -241,7 +241,7 @@ class FileSystem : public std::enable_shared_from_this<FileSystem> {
   bool can_serve_{false};
 
   // generate inode id
-  IdGeneratorPtr id_generator_;
+  IdGeneratorUPtr id_generator_;
 
   // persistence store dentry/inode
   KVStorageSPtr kv_storage_;
@@ -270,16 +270,18 @@ class FileSystem : public std::enable_shared_from_this<FileSystem> {
 // manage all filesystem
 class FileSystemSet {
  public:
-  FileSystemSet(CoordinatorClientSPtr coordinator_client, IdGeneratorPtr id_generator, KVStorageSPtr kv_storage,
-                MDSMeta self_mds_meta, MDSMetaMapSPtr mds_meta_map, RenamerPtr renamer,
-                MutationProcessorSPtr mutation_processor);
+  FileSystemSet(CoordinatorClientSPtr coordinator_client, IdGeneratorUPtr fs_id_generator,
+                IdGeneratorUPtr slice_id_generator, KVStorageSPtr kv_storage, MDSMeta self_mds_meta,
+                MDSMetaMapSPtr mds_meta_map, RenamerPtr renamer, MutationProcessorSPtr mutation_processor);
   ~FileSystemSet();
 
-  static FileSystemSetSPtr New(CoordinatorClientSPtr coordinator_client, IdGeneratorPtr id_generator,
-                               KVStorageSPtr kv_storage, MDSMeta self_mds_meta, MDSMetaMapSPtr mds_meta_map,
-                               RenamerPtr renamer, MutationProcessorSPtr mutation_processor) {
-    return std::make_shared<FileSystemSet>(coordinator_client, std::move(id_generator), kv_storage, self_mds_meta,
-                                           mds_meta_map, renamer, mutation_processor);
+  static FileSystemSetSPtr New(CoordinatorClientSPtr coordinator_client, IdGeneratorUPtr fs_id_generator,
+                               IdGeneratorUPtr slice_id_generator, KVStorageSPtr kv_storage, MDSMeta self_mds_meta,
+                               MDSMetaMapSPtr mds_meta_map, RenamerPtr renamer,
+                               MutationProcessorSPtr mutation_processor) {
+    return std::make_shared<FileSystemSet>(coordinator_client, std::move(fs_id_generator),
+                                           std::move(slice_id_generator), kv_storage, self_mds_meta, mds_meta_map,
+                                           renamer, mutation_processor);
   }
 
   bool Init();
@@ -288,6 +290,7 @@ class FileSystemSet {
     int64_t mds_id;
     std::string fs_name;
     uint64_t block_size;
+    uint64_t chunk_size;
     pb::mdsv2::FsType fs_type;
     pb::mdsv2::FsExtra fs_extra;
     bool enable_sum_in_dir;
@@ -300,7 +303,7 @@ class FileSystemSet {
   Status CreateFs(const CreateFsParam& param, pb::mdsv2::FsInfo& fs_info);
   Status MountFs(const std::string& fs_name, const pb::mdsv2::MountPoint& mount_point);
   Status UmountFs(const std::string& fs_name, const pb::mdsv2::MountPoint& mount_point);
-  Status DeleteFs(const std::string& fs_name);
+  Status DeleteFs(const std::string& fs_name, bool is_force);
   Status UpdateFsInfo(Context& ctx, const std::string& fs_name, const pb::mdsv2::FsInfo& fs_info);
   Status GetFsInfo(Context& ctx, const std::string& fs_name, pb::mdsv2::FsInfo& fs_info);
   Status GetAllFsInfo(Context& ctx, std::vector<pb::mdsv2::FsInfo>& fs_infoes);
@@ -330,9 +333,9 @@ class FileSystemSet {
   CoordinatorClientSPtr coordinator_client_;
 
   // for fs id
-  IdGeneratorPtr id_generator_;
+  IdGeneratorUPtr id_generator_;
   // for slice id
-  IdGeneratorPtr slice_id_generator_;
+  IdGeneratorUPtr slice_id_generator_;
 
   KVStorageSPtr kv_storage_;
 

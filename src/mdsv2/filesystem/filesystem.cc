@@ -44,7 +44,6 @@
 #include "mdsv2/filesystem/inode.h"
 #include "mdsv2/filesystem/mutation_processor.h"
 #include "mdsv2/mds/mds_meta.h"
-#include "mdsv2/server.h"
 #include "mdsv2/service/service_access.h"
 #include "mdsv2/storage/storage.h"
 #include "utils/uuid.h"
@@ -63,6 +62,8 @@ static const std::string kFsTableName = "dingofs";
 
 static const std::string kStatsName = ".stats";
 static const std::string kRecyleName = ".recycle";
+
+static const std::string kFsDelSuffix = "delete";
 
 DEFINE_uint32(filesystem_name_max_size, 1024, "Max size of filesystem name.");
 DEFINE_uint32(filesystem_hash_bucket_num, 1024, "Filesystem hash bucket num.");
@@ -83,7 +84,7 @@ static inline bool IsDir(uint64_t ino) { return (ino & 1) == 1; }
 
 static inline bool IsFile(uint64_t ino) { return (ino & 1) == 0; }
 
-FileSystem::FileSystem(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorPtr id_generator, KVStorageSPtr kv_storage,
+FileSystem::FileSystem(int64_t self_mds_id, FsInfoUPtr fs_info, IdGeneratorUPtr id_generator, KVStorageSPtr kv_storage,
                        RenamerPtr renamer, MutationProcessorSPtr mutation_processor, MDSMetaMapSPtr mds_meta_map)
     : self_mds_id_(self_mds_id),
       fs_info_(std::move(fs_info)),
@@ -2545,11 +2546,12 @@ Status FileSystem::UpdatePartitionPolicy(const std::map<uint64_t, pb::mdsv2::Has
   return Status::OK();
 }
 
-FileSystemSet::FileSystemSet(CoordinatorClientSPtr coordinator_client, IdGeneratorPtr id_generator,
-                             KVStorageSPtr kv_storage, MDSMeta self_mds_meta, MDSMetaMapSPtr mds_meta_map,
-                             RenamerPtr renamer, MutationProcessorSPtr mutation_processor)
+FileSystemSet::FileSystemSet(CoordinatorClientSPtr coordinator_client, IdGeneratorUPtr fs_id_generator,
+                             IdGeneratorUPtr slice_id_generator, KVStorageSPtr kv_storage, MDSMeta self_mds_meta,
+                             MDSMetaMapSPtr mds_meta_map, RenamerPtr renamer, MutationProcessorSPtr mutation_processor)
     : coordinator_client_(coordinator_client),
-      id_generator_(std::move(id_generator)),
+      id_generator_(std::move(fs_id_generator)),
+      slice_id_generator_(std::move(slice_id_generator)),
       kv_storage_(kv_storage),
       self_mds_meta_(self_mds_meta),
       mds_meta_map_(mds_meta_map),
@@ -2606,6 +2608,7 @@ pb::mdsv2::FsInfo FileSystemSet::GenFsInfo(int64_t fs_id, const CreateFsParam& p
   fs_info.set_fs_type(param.fs_type);
   fs_info.set_status(::dingofs::pb::mdsv2::FsStatus::NEW);
   fs_info.set_block_size(param.block_size);
+  fs_info.set_chunk_size(param.chunk_size);
   fs_info.set_enable_sum_in_dir(param.enable_sum_in_dir);
   fs_info.set_owner(param.owner);
   fs_info.set_capacity(param.capacity);
@@ -2665,10 +2668,31 @@ bool FileSystemSet::IsExistFsTable() {
   return true;
 }
 
+Status ValidateCreateFsParam(const FileSystemSet::CreateFsParam& param) {
+  if (param.fs_name.empty()) {
+    return Status(pb::error::EILLEGAL_PARAMTETER, "fs name is empty");
+  }
+
+  if (param.block_size == 0) {
+    return Status(pb::error::EILLEGAL_PARAMTETER, "block size is zero");
+  }
+
+  if (param.chunk_size == 0) {
+    return Status(pb::error::EILLEGAL_PARAMTETER, "chunk size is zero");
+  }
+
+  return Status::OK();
+}
+
 // todo: create fs/dentry/inode table
 Status FileSystemSet::CreateFs(const CreateFsParam& param, pb::mdsv2::FsInfo& fs_info) {
+  auto status = ValidateCreateFsParam(param);
+  if (!status.ok()) {
+    return status;
+  }
+
   int64_t fs_id = 0;
-  auto status = GenFsId(fs_id);
+  status = GenFsId(fs_id);
   if (BAIDU_UNLIKELY(!status.ok())) {
     return status;
   }
@@ -2858,34 +2882,45 @@ Status FileSystemSet::UmountFs(const std::string& fs_name, const pb::mdsv2::Moun
 
 // check if fs is mounted
 // rename fs name to oldname+"_deleting"
-Status FileSystemSet::DeleteFs(const std::string& fs_name) {
+Status FileSystemSet::DeleteFs(const std::string& fs_name, bool is_force) {
   std::string fs_key = MetaDataCodec::EncodeFSKey(fs_name);
-  std::string value;
-  Status status = kv_storage_->Get(fs_key, value);
-  if (!status.ok()) {
-    return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
+
+  pb::mdsv2::FsInfo fs_info;
+  Status status;
+  int retry = 0;
+  do {
+    auto txn = kv_storage_->NewTxn();
+
+    std::string value;
+    status = txn->Get(fs_key, value);
+    if (!status.ok()) {
+      return Status(pb::error::ENOT_FOUND, fmt::format("not found fs({}), {}.", fs_name, status.error_str()));
+    }
+
+    fs_info = MetaDataCodec::DecodeFSValue(value);
+    if (!is_force && fs_info.mount_points_size() > 0) {
+      return Status(pb::error::EEXISTED, "Fs exist mount point.");
+    }
+
+    txn->Delete(fs_key);
+
+    fs_info.set_is_deleted(true);
+    fs_info.set_delete_time_s(Helper::Timestamp());
+    std::string delete_fs_name = fmt::format("{}_{}", fs_name, kFsDelSuffix);
+    txn->Put(MetaDataCodec::EncodeFSKey(delete_fs_name), MetaDataCodec::EncodeFSValue(fs_info));
+
+    status = txn->Commit();
+    if (status.error_code() != pb::error::ESTORE_MAYBE_RETRY) {
+      break;
+    }
+
+  } while (++retry < FLAGS_txn_max_retry_times);
+
+  if (status.ok()) {
+    DeleteFileSystem(fs_info.fs_id());
   }
 
-  auto fs_info = MetaDataCodec::DecodeFSValue(value);
-  if (fs_info.mount_points_size() > 0) {
-    return Status(pb::error::EEXISTED, "Fs exist mount point.");
-  }
-
-  status = kv_storage_->Delete(fs_key);
-  if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, fmt::format("Delete fs fail, {}", status.error_str()));
-  }
-
-  KVStorage::WriteOption option;
-  std::string delete_fs_name = fmt::format("{}_deleting", fs_name);
-  status = kv_storage_->Put(option, MetaDataCodec::EncodeFSKey(delete_fs_name), MetaDataCodec::EncodeFSValue(fs_info));
-  if (!status.ok()) {
-    return Status(pb::error::EBACKEND_STORE, fmt::format("put store fs fail, {}", status.error_str()));
-  }
-
-  DeleteFileSystem(fs_info.fs_id());
-
-  return Status::OK();
+  return status;
 }
 
 Status FileSystemSet::UpdateFsInfo(Context& ctx, const std::string& fs_name, const pb::mdsv2::FsInfo& fs_info) {
@@ -2964,7 +2999,9 @@ Status FileSystemSet::GetAllFsInfo(Context& ctx, std::vector<pb::mdsv2::FsInfo>&
 
   for (const auto& kv : kvs) {
     auto fs_info = MetaDataCodec::DecodeFSValue(kv.value);
-    fs_infoes.push_back(std::move(fs_info));
+    if (!fs_info.is_deleted()) {
+      fs_infoes.push_back(std::move(fs_info));
+    }
   }
 
   return Status::OK();
