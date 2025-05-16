@@ -65,13 +65,13 @@ class CleanDeletedSliceTask : public TaskRunnable {
 
 class CleanDeletedFileTask : public TaskRunnable {
  public:
-  CleanDeletedFileTask(KVStorageSPtr kv_storage, dataaccess::DataAccesserPtr data_accessor, const AttrType& inode)
-      : kv_storage_(kv_storage), data_accessor_(data_accessor), inode_(inode) {}
+  CleanDeletedFileTask(KVStorageSPtr kv_storage, dataaccess::DataAccesserPtr data_accessor, const AttrType& attr)
+      : kv_storage_(kv_storage), data_accessor_(data_accessor), attr_(attr) {}
   ~CleanDeletedFileTask() override = default;
 
   static CleanDeletedFileTaskSPtr New(KVStorageSPtr kv_storage, dataaccess::DataAccesserPtr data_accessor,
-                                      const AttrType& inode) {
-    return std::make_shared<CleanDeletedFileTask>(kv_storage, data_accessor, inode);
+                                      const AttrType& attr) {
+    return std::make_shared<CleanDeletedFileTask>(kv_storage, data_accessor, attr);
   }
 
   std::string Type() override { return "CLEAN_DELETED_FILE"; }
@@ -79,9 +79,9 @@ class CleanDeletedFileTask : public TaskRunnable {
   void Run() override;
 
  private:
-  Status CleanDeletedFile(const AttrType& inode);
+  Status CleanDeletedFile(const AttrType& attr);
 
-  AttrType inode_;
+  AttrType attr_;
 
   KVStorageSPtr kv_storage_;
 
@@ -91,11 +91,11 @@ class CleanDeletedFileTask : public TaskRunnable {
 
 class GcProcessor {
  public:
-  GcProcessor(KVStorageSPtr kv_storage, DistributionLockPtr dist_lock)
+  GcProcessor(KVStorageSPtr kv_storage, DistributionLockSPtr dist_lock)
       : kv_storage_(kv_storage), dist_lock_(dist_lock) {}
   ~GcProcessor() = default;
 
-  static GcProcessorSPtr New(KVStorageSPtr kv_storage, DistributionLockPtr dist_lock) {
+  static GcProcessorSPtr New(KVStorageSPtr kv_storage, DistributionLockSPtr dist_lock) {
     return std::make_shared<GcProcessor>(kv_storage, dist_lock);
   }
 
@@ -116,7 +116,7 @@ class GcProcessor {
 
   std::atomic<bool> is_running_{false};
 
-  DistributionLockPtr dist_lock_;
+  DistributionLockSPtr dist_lock_;
 
   KVStorageSPtr kv_storage_;
 

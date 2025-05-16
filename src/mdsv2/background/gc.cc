@@ -40,7 +40,7 @@ DECLARE_int32(fs_scan_batch_size);
 DEFINE_uint32(gc_worker_num, 4, "gc worker set num");
 DEFINE_uint32(gc_max_pending_task_count, 512, "gc max pending task count");
 
-DEFINE_uint32(gc_del_file_reserve_time_s, 86400, "gc del file reserve time");
+DEFINE_uint32(gc_delfile_reserve_time_s, 600, "gc del file reserve time");
 
 static const std::string kWorkerSetName = "GC";
 
@@ -59,8 +59,8 @@ Status CleanDeletedSliceTask::CleanDeletedSlice(const std::string& key, const st
                                    slice.chunk_index(), slice.slice_id());
 
     for (const auto& range : slice.ranges()) {
-      uint64_t index = range.offset() / slice.chunk_size();
-      cache::blockcache::BlockKey block_key(slice.fs_id(), slice.ino(), slice.chunk_index(), index, 0);
+      uint64_t index = range.offset() / slice.block_size();
+      cache::blockcache::BlockKey block_key(slice.fs_id(), slice.ino(), slice.slice_id(), index, 0);
 
       auto status = data_accessor_->Delete(block_key.StoreKey());
       if (!status.ok()) {
@@ -79,39 +79,45 @@ Status CleanDeletedSliceTask::CleanDeletedSlice(const std::string& key, const st
 }
 
 void CleanDeletedFileTask::Run() {
-  auto status = CleanDeletedFile(inode_);
+  auto status = CleanDeletedFile(attr_);
   if (!status.ok()) {
-    DINGO_LOG(ERROR) << fmt::format("[gc] clean deleted file fail, {}", status.error_str());
+    DINGO_LOG(ERROR) << fmt::format("[gc.delfile] clean delfile fail, {}", status.error_str());
   }
 }
 
-Status CleanDeletedFileTask::CleanDeletedFile(const AttrType& inode) {
+Status CleanDeletedFileTask::CleanDeletedFile(const AttrType& attr) {
+  DINGO_LOG(INFO) << fmt::format("[gc.delfile] clean delfile, attr {}.", attr.ShortDebugString());
+
   // delete data from s3
-  for (const auto& [_, chunk] : inode.chunks()) {
-    DINGO_LOG(INFO) << fmt::format("[gc] clean deleted file {}/{}/{}/{}.", inode.fs_id(), inode.ino(), chunk.index(),
-                                   chunk.version());
-
+  for (const auto& [_, chunk] : attr.chunks()) {
     for (const auto& slice : chunk.slices()) {
-      uint64_t index = slice.offset() / chunk.size();
-      cache::blockcache::BlockKey block_key(inode.fs_id(), inode.ino(), chunk.index(), index, 0);
+      uint64_t index = slice.offset() / chunk.block_size();
+      cache::blockcache::BlockKey block_key(attr.fs_id(), attr.ino(), slice.id(), index, chunk.version());
 
-      auto status = data_accessor_->Delete(block_key.StoreKey());
-      if (!status.ok()) {
-        return Status(pb::error::EINTERNAL, fmt::format("delete s3 object fail, {}", status.ToString()));
-      }
+      DINGO_LOG(INFO) << fmt::format("[gc.delfile] delete block filename({}) key({}).", block_key.Filename(),
+                                     block_key.StoreKey());
+      // auto status = data_accessor_->Delete(block_key.StoreKey());
+      // if (!status.ok()) {
+      //   return Status(pb::error::EINTERNAL, fmt::format("delete s3 object fail, {}", status.ToString()));
+      // }
     }
   }
 
-  // delete inode
-  auto status = kv_storage_->Delete(MetaCodec::EncodeDelFileKey(inode.fs_id(), inode.ino()));
-  if (!status.ok()) {
-    DINGO_LOG(ERROR) << fmt::format("[gc] clean del file fail, {}", status.error_str());
-  }
+  // delete attr
+  // return kv_storage_->Delete(MetaCodec::EncodeDelFileKey(attr.fs_id(), attr.ino()));
 
-  return status;
+  return Status::OK();
 }
 
 bool GcProcessor::Init() {
+  CHECK(dist_lock_ != nullptr) << "dist lock is nullptr.";
+  CHECK(kv_storage_ != nullptr) << "kv storage is nullptr.";
+
+  if (!dist_lock_->Init()) {
+    DINGO_LOG(ERROR) << "[gc] init dist lock fail.";
+    return false;
+  }
+
   dataaccess::aws::S3AdapterOption option;
   data_accessor_ = dataaccess::S3Accesser::New(option);
   CHECK(data_accessor_->Init()) << "init data accesser fail.";
@@ -121,6 +127,10 @@ bool GcProcessor::Init() {
 }
 
 void GcProcessor::Destroy() {
+  if (dist_lock_ != nullptr) {
+    dist_lock_->Destroy();
+  }
+
   if (worker_set_ != nullptr) {
     worker_set_->Destroy();
   }
@@ -146,7 +156,7 @@ Status GcProcessor::LaunchGc() {
   }
 
   // ScanDeletedSlice();
-  // ScanDeletedFile();
+  ScanDeletedFile();
 
   return Status::OK();
 }
@@ -184,6 +194,7 @@ void GcProcessor::ScanDeletedFile() {
 
   auto txn = kv_storage_->NewTxn();
 
+  uint32_t count = 0;
   Status status;
   std::vector<KeyValue> kvs;
   do {
@@ -199,12 +210,20 @@ void GcProcessor::ScanDeletedFile() {
       }
     }
 
+    count += kvs.size();
+
   } while (kvs.size() >= FLAGS_fs_scan_batch_size);
+
+  DINGO_LOG(INFO) << fmt::format("[gc.delfile] scan delfile count({}).", count);
+
+  if (!status.ok()) {
+    DINGO_LOG(ERROR) << fmt::format("[gc.delfile] scan delfile fail, {}.", status.error_str());
+  }
 }
 
 bool GcProcessor::ShouldDeleteFile(const AttrType& attr) {
   uint64_t now_s = Helper::Timestamp();
-  return (attr.ctime() / 1000000000 + FLAGS_gc_del_file_reserve_time_s) < now_s;
+  return (attr.ctime() / 1000000000 + FLAGS_gc_delfile_reserve_time_s) < now_s;
 }
 
 }  // namespace mdsv2
