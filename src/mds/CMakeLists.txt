@@ -74,7 +74,10 @@ target_link_libraries(mds_lib
   jsoncpp
 )
 
-add_executable(dingo-mds main.cc)
+add_executable(dingo-mds
+  main.cc
+  service/fsstat_server_data_source.cc
+)
 
 target_link_libraries(dingo-mds
   mds_lib

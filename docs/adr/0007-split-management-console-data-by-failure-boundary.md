@@ -1,0 +1,3 @@
+# Split management console data by failure boundary
+
+The management API will combine a lightweight overview resource with separate resources for larger datasets such as file systems, MDS nodes, clients, cache members, distributed locks, and cache summaries. Each core resource response will carry both its own summary counts and a bounded item collection, allowing the console to build overview previews without querying the same source twice. The console will load resources independently so that different pagination needs or failure modes do not delay or suppress unrelated sections; the overview endpoint is limited to cluster identity, the serving MDS, storage engine, build information, and API version rather than becoming a complete MDS snapshot.

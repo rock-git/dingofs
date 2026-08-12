@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-08-12T10:00:00.000Z",
+  "items": [
+    {
+      "id": "10000",
+      "type": "FILE",
+      "lengthBytes": "4096",
+      "version": "7"
+    }
+  ]
+}

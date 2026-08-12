@@ -16,6 +16,7 @@
 file(GLOB TEST_DINGOFS_MDS_SERVICE_SRCS
   "*.cc"
 )
+list(FILTER TEST_DINGOFS_MDS_SERVICE_SRCS EXCLUDE REGEX "test_fsstat_api(_main)?\\.cc$")
 
 add_library(test_mds_service
   ${TEST_DINGOFS_MDS_SERVICE_SRCS}
@@ -28,4 +29,26 @@ target_link_libraries(test_mds_service
 
   protobuf::libprotobuf
   ${TEST_DEPS_WITHOUT_MAIN}
+)
+
+add_executable(test_fsstat_api
+  test_fsstat_api_main.cc
+  test_fsstat_api.cc
+  ${PROJECT_SOURCE_DIR}/src/mds/service/fsstat_api.cc
+  ${PROJECT_SOURCE_DIR}/src/mds/service/fsstat_assets.cc
+  ${PROJECT_SOURCE_DIR}/src/mds/service/fsstat_assets_generated.cc
+)
+
+target_link_libraries(test_fsstat_api
+  PROTO_OBJS
+  mds_common
+  dingofs_utils
+  dingofs_common
+  protobuf::libprotobuf
+  jsoncpp
+  ${TEST_DEPS_WITHOUT_MAIN}
+)
+
+set_target_properties(test_fsstat_api PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY ${TEST_EXECUTABLE_OUTPUT_PATH}
 )

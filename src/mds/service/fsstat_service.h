@@ -16,6 +16,8 @@
 #define DINGOFS_MDS_SERVICE_FSSTAT_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "brpc/builtin/tabbed.h"
 #include "brpc/server.h"
@@ -47,6 +49,8 @@ class FsStatServiceImpl : public pb::web::FsStatService, public brpc::Tabbed {
   void RenderMainPage(const brpc::Server* server, FileSystemSetSPtr file_system_set, const std::string& parse_key,
                       butil::IOBufBuilder& os);
   void RenderServerPage(butil::IOBufBuilder& os);
+  bool HandleLegacy(const brpc::Server* server, brpc::Controller* controller, const std::string& path,
+                    const std::vector<std::string>& params, butil::IOBufBuilder& os);
 };
 
 }  // namespace mds

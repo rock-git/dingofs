@@ -1,0 +1,26 @@
+{
+  "summary": { "total": 1, "normal": 1 },
+  "items": [
+    {
+      "id": "12",
+      "name": "sample",
+      "lifecycleState": "normal",
+      "type": "s3",
+      "partitionType": "monolithic_partition",
+      "owner": "operator",
+      "capacityBytes": "1099511627776",
+      "blockSizeBytes": "4194304",
+      "chunkSizeBytes": "67108864",
+      "mountPointCount": 1,
+      "uuid": "sample-uuid",
+      "version": "4",
+      "updatedAt": "2026-08-12T08:30:00.123Z",
+      "createdAt": "2026-08-01T08:30:00.000Z",
+      "health": { "state": "normal", "reason": "filesystem_lifecycle" },
+      "storage": { "type": "s3", "endpoint": "https://s3.example", "bucket": "sample" }
+    }
+  ],
+  "generatedAt": "2026-08-12T08:30:00.123Z",
+  "nextCursor": null,
+  "truncated": false
+}

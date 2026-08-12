@@ -1,0 +1,476 @@
+openapi: 3.1.0
+info:
+  title: DingoFS MDS Management API
+  version: 1.0.0
+  description: Read-only operations API for the embedded DingoFS MDS console.
+servers:
+  - url: /FsStatService/api/v1
+paths:
+  /overview:
+    get:
+      operationId: getOverview
+      responses:
+        '200':
+          description: Console metadata.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Overview'
+  /filesystems:
+    get:
+      operationId: getFilesystems
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: File system collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilesystemCollection'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /mds-nodes:
+    get:
+      operationId: getMdsNodes
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: MDS node collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MdsCollection'
+  /clients:
+    get:
+      operationId: getClients
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Client collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientCollection'
+  /cache-members:
+    get:
+      operationId: getCacheMembers
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Cache member collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheMemberCollection'
+  /filesystems/{fsId}/quota:
+    get:
+      operationId: getFilesystemQuota
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+      responses:
+        '200':
+          description: File-system and directory quota.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /filesystems/{fsId}/dir-stats:
+    get:
+      operationId: getDirectoryStats
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+      responses:
+        '200':
+          description: Directory statistics.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /filesystems/{fsId}/mountpoints:
+    get:
+      operationId: getMountpoints
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+      responses:
+        '200':
+          description: File-system mount points.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /filesystems/{fsId}/file-sessions:
+    get:
+      operationId: getFileSessions
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+      responses:
+        '200':
+          description: Open file sessions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /filesystems/{fsId}/files/{ino}/chunks:
+    get:
+      operationId: getChunks
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+        - $ref: '#/components/parameters/Ino'
+      responses:
+        '200':
+          description: File chunks.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /filesystems/{fsId}/files/{ino}/shard:
+    get:
+      operationId: getPartitionShard
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+        - $ref: '#/components/parameters/Ino'
+      responses:
+        '200':
+          description: Partition shard description.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiagnosticResponse' }
+  /server:
+    get:
+      operationId: getServerDetails
+      responses:
+        '200':
+          description: Server diagnostic details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /version:
+    get:
+      operationId: getVersionInformation
+      responses:
+        '200':
+          description: Build and SDK versions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /locks:
+    get:
+      operationId: getDistributionLocks
+      responses:
+        '200':
+          description: Distribution lock leases.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /id-generators:
+    get:
+      operationId: getIdGenerators
+      responses:
+        '200':
+          description: ID generator descriptions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /cache-summary:
+    get:
+      operationId: getCacheSummary
+      responses:
+        '200':
+          description: MDS cache summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /tools/parse-key:
+    get:
+      operationId: parseMetadataKey
+      parameters:
+        - name: key
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Parsed metadata key.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/details:
+    get:
+      operationId: getFilesystemDetails
+      parameters: [{ $ref: '#/components/parameters/FsId' }]
+      responses:
+        '200':
+          description: Allowlisted file-system details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/tree:
+    get:
+      operationId: getDirectoryEntries
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+        - name: parentIno
+          in: query
+          schema: { type: string, default: '0' }
+      responses:
+        '200':
+          description: Bounded directory entries.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/deleted-files:
+    get:
+      operationId: getDeletedFiles
+      parameters: [{ $ref: '#/components/parameters/FsId' }]
+      responses:
+        '200':
+          description: Deleted inode collection.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/deleted-files/{ino}:
+    get:
+      operationId: getDeletedFile
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+        - $ref: '#/components/parameters/Ino'
+      responses:
+        '200':
+          description: Deleted inode details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/deleted-slices:
+    get:
+      operationId: getDeletedSlices
+      parameters: [{ $ref: '#/components/parameters/FsId' }]
+      responses:
+        '200':
+          description: Deleted slice collection.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/slice-references:
+    get:
+      operationId: getSliceReferences
+      parameters: [{ $ref: '#/components/parameters/FsId' }]
+      responses:
+        '200':
+          description: Slice reference collection.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/oplog:
+    get:
+      operationId: getFilesystemOpLog
+      parameters: [{ $ref: '#/components/parameters/FsId' }]
+      responses:
+        '200':
+          description: File-system operation log.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+  /filesystems/{fsId}/inodes/{ino}:
+    get:
+      operationId: getInodeDetails
+      parameters:
+        - $ref: '#/components/parameters/FsId'
+        - $ref: '#/components/parameters/Ino'
+      responses:
+        '200':
+          description: Inode details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RemainingResponse' }
+components:
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 5000
+        default: 1000
+    Cursor:
+      name: cursor
+      in: query
+      schema:
+        type: string
+    FsId:
+      name: fsId
+      in: path
+      required: true
+      schema: { type: string }
+    Ino:
+      name: ino
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    ServiceUnavailable:
+      description: A required MDS dependency is unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            requestId: { type: string }
+    RemainingResponse:
+      type: object
+      required: [generatedAt]
+      properties:
+        generatedAt: { type: string, format: date-time }
+        items: { type: array, items: {} }
+      additionalProperties: true
+    DiagnosticResponse:
+      type: object
+      required: [filesystemId, generatedAt]
+      properties:
+        filesystemId: { type: string }
+        ino: { type: string }
+        generatedAt: { type: string, format: date-time }
+      additionalProperties: true
+    Overview:
+      type: object
+      required: [clusterId, servingMdsId, storageEngine, apiVersion, build]
+      properties:
+        clusterId: { type: string }
+        servingMdsId: { type: string }
+        storageEngine: { type: string }
+        apiVersion: { type: string }
+        build:
+          type: object
+          required: [version, commit, commitTime]
+          properties:
+            version: { type: string }
+            commit: { type: string }
+            commitTime: { type: string }
+    ListMeta:
+      type: object
+      required: [items, generatedAt, nextCursor]
+      properties:
+        items: { type: array, items: {} }
+        generatedAt: { type: string, format: date-time }
+        nextCursor: { type: [string, 'null'] }
+        truncated: { type: boolean }
+    Summary:
+      type: object
+      additionalProperties: { type: integer }
+    FilesystemCollection:
+      allOf:
+        - $ref: '#/components/schemas/ListMeta'
+        - type: object
+          properties:
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Filesystem' }
+    MdsCollection:
+      allOf:
+        - $ref: '#/components/schemas/ListMeta'
+        - type: object
+          properties:
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/MdsNode' }
+    ClientCollection:
+      allOf:
+        - $ref: '#/components/schemas/ListMeta'
+        - type: object
+          properties:
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Client' }
+    CacheMemberCollection:
+      allOf:
+        - $ref: '#/components/schemas/ListMeta'
+        - type: object
+          properties:
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/CacheMember' }
+    Health:
+      type: object
+      required: [state, reason]
+      properties:
+        state: { type: string }
+        reason: { type: string }
+    Filesystem:
+      type: object
+      required: [id, name, lifecycleState, type, partitionType, owner, capacityBytes, mountPointCount, updatedAt, health]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        lifecycleState: { type: string }
+        type: { type: string }
+        partitionType: { type: string }
+        owner: { type: string }
+        capacityBytes: { type: string }
+        blockSizeBytes: { type: string }
+        chunkSizeBytes: { type: string }
+        mountPointCount: { type: integer }
+        uuid: { type: string }
+        version: { type: string }
+        updatedAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+        health: { $ref: '#/components/schemas/Health' }
+        storage:
+          type: object
+          properties:
+            type: { type: string }
+            endpoint: { type: string }
+            bucket: { type: string }
+            pool: { type: string }
+            cluster: { type: string }
+    MdsNode:
+      type: object
+      required: [id, host, port, state, health, lastOnlineAt]
+      properties:
+        id: { type: string }
+        host: { type: string }
+        port: { type: integer }
+        state: { type: string }
+        health: { $ref: '#/components/schemas/Health' }
+        createdAt: { type: string, format: date-time }
+        lastOnlineAt: { type: string, format: date-time }
+    Client:
+      type: object
+      required: [id, host, port, mountpoint, filesystem, health]
+      properties:
+        id: { type: string }
+        host: { type: string }
+        hostname: { type: string }
+        port: { type: integer }
+        mountpoint: { type: string }
+        filesystem: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastOnlineAt: { type: string, format: date-time }
+        health: { $ref: '#/components/schemas/Health' }
+    CacheMember:
+      type: object
+      required: [id, host, group, weight, locked, state, health]
+      properties:
+        id: { type: string }
+        host: { type: string }
+        group: { type: string }
+        weight: { type: integer }
+        locked: { type: boolean }
+        state: { type: string }
+        lastOnlineAt: { type: string, format: date-time }
+        health: { $ref: '#/components/schemas/Health' }

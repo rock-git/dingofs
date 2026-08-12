@@ -356,9 +356,18 @@ class FileSystem : public std::enable_shared_from_this<FileSystem> {
 
   Status DescribePartitionShard(Ino ino, Json::Value& value);
 
+  // Read-only management-console accessors. They keep diagnostic API code
+  // outside the filesystem implementation while preserving the existing
+  // store-read semantics.
+  Status GetInodeForManagement(Context& ctx, Ino ino, const std::string& reason, InodeSPtr& out_inode) {
+    return GetInodeFromStore(ctx, ino, reason, false, out_inode);
+  }
+  Status GetDeletedFileForManagement(Ino ino, AttrEntry& out_attr) { return GetDelFileFromStore(ino, out_attr); }
+
  private:
   friend class DebugServiceImpl;
   friend class FsStatServiceImpl;
+  friend class FileSystemSet;
 
   IdGenerator& GetInoIdGenerator() { return *ino_id_generator_; }
 
@@ -586,6 +595,7 @@ class FileSystemSet {
 
   void DescribeByJson(Json::Value& value);
   void Summary(Json::Value& value);
+  void DescribeIdGenerators(Json::Value& value);
 
  private:
   friend class FsStatServiceImpl;

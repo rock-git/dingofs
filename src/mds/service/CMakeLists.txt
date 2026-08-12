@@ -15,10 +15,20 @@
 file(GLOB DINGOFS_MDS_SERVICE_SRCS
     "*.cc"
 )
+list(FILTER DINGOFS_MDS_SERVICE_SRCS EXCLUDE REGEX "fsstat_server_data_source\\.cc$")
 
 add_library(mds_service
     ${DINGOFS_MDS_SERVICE_SRCS}
 )
+
+find_program(BASH_EXECUTABLE bash)
+if(BASH_EXECUTABLE)
+  add_custom_target(mds_console_assets
+    COMMAND ${BASH_EXECUTABLE} ${PROJECT_SOURCE_DIR}/console/scripts/build.sh
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Build and embed MDS management console assets"
+  )
+endif()
 
 target_link_libraries(mds_service
     mds_common

@@ -1,0 +1,3 @@
+# Combine client-side list behavior with bounded API pages
+
+The first management API will return stably ordered resource collections in an envelope containing `items`, `generatedAt`, and an opaque nullable `nextCursor`. The backend may still read all records internally, but it will serialize only a bounded page and use the resource ID as the final ordering tie-breaker; the console performs filtering, sorting, and pagination locally when the collection fits in one API page, and exposes continuation loading when more pages exist. This bounds JSON and browser memory without pretending to reduce the underlying query cost, while preserving the HTTP contract when storage-native pagination is added later.

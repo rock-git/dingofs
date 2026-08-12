@@ -4833,5 +4833,22 @@ void FileSystemSet::Summary(Json::Value& value) {
   }
 }
 
+void FileSystemSet::DescribeIdGenerators(Json::Value& value) {
+  CHECK(value.isArray()) << "value is not array.";
+
+  auto append_generator = [&value](const std::string& scope, const std::string& description) {
+    Json::Value item(Json::objectValue);
+    item["scope"] = scope;
+    item["description"] = description;
+    value.append(std::move(item));
+  };
+
+  append_generator("filesystem", GetFsIdGenerator().Describe());
+  append_generator("slice", GetSliceIdGenerator().Describe());
+  for (const auto& fs : GetAllFileSystem()) {
+    append_generator(fmt::format("inode:{}", fs->FsId()), fs->GetInoIdGenerator().Describe());
+  }
+}
+
 }  // namespace mds
 }  // namespace dingofs

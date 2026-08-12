@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "filesystem_not_found",
+    "message": "File system 12 was not found",
+    "requestId": "test-request"
+  }
+}
